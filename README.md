@@ -8,19 +8,19 @@ This addon packs several **professional-grade techniques** commonly used in the 
 [Installation](#installation)
 [Documentation](#documentation)
   [I VAT - Vertex Animation Textures Baker](#i.-vat---vertex-animation-textures-baker)
-    [I.I VAT - Intro](#i.1.-vat---theory)
-    [I.I VAT - Animation](#i.2.-vat---animation)
-    [I.I VAT - Mesh Sequence](#i.3.-vat---mesh-sequence)
-  [II Data - UV VCol Data Baker](#ii.-data---uv-vcol-data-baker)
-    [II.I Data - Intro](#ii.1.-data---intro)
+    [I.I VAT - Intro](#i1-vat---theory)
+    [I.I VAT - Animation](#i2-vat---animation)
+    [I.I VAT - Mesh Sequence](#i3-vat---mesh-sequence)
+  [II Data - UV VCol Data Baker](#ii-data---uv-vcol-data-baker)
+    [II.I Data - Intro](#ii1-data---intro)
 
 ## Glossary
 
-VAT - The process of baking vertex data into textures AND the resulting texture(s)
-BAT - The process of baking bone data into textures AND the resulting texture(s)
-OAT - The process of baking object data into textures AND the resulting texture(s)
-POT - Power of Two
-NPOT - Non Power of Two
+**VAT** - The process of baking vertex data into textures AND the resulting texture(s)
+**BAT** - The process of baking bone data into textures AND the resulting texture(s)
+**OAT** - The process of baking object data into textures AND the resulting texture(s)
+**POT** - Power of Two
+**NPOT** - Non Power of Two
     
 ## Installation
 This addon is available as an **official** [Blender extension](https://extensions.blender.org/about/). ![](Documentation/Images/doc_install_03.jpg)
