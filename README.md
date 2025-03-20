@@ -36,17 +36,28 @@ Then, open the **Edit>Preferences** window, go to the **Get Extensions** tab and
 
 ### I.1. VAT - Intro
 
-**Vertex Animation Texture** (VAT) is one of the simplest technique for **baking skeletal animation(s)** (or any animation) **into textures** by encoding data per vertex, per frame, in pixels. These textures are then sampled in a **vertex shader** to **play the animation** on a **static mesh**. This can lead to significant performance gains, as rendering skeletal meshes is typically the most expensive way to render animated meshes. By using static meshes, you can leverage instancing and particles to efficiently render crowds, etc. However, this technique also has its own pros and cons, which we'll discuss in the following sections.
+**Vertex Animation Texture** (VAT) is one of the simplest technique for **baking skeletal animation(s)** (or any animation) **into textures** by encoding data per vertex, per frame, in pixels. These textures are then sampled in a **vertex shader** to **play the animation** on a **static mesh**.
+
+This can lead to significant performance gains, as rendering skeletal meshes is typically the most expensive way to render animated meshes. By using static meshes, you can leverage instancing and particles to efficiently render crowds, etc. However, this technique also has its own pros and cons, which we'll discuss in the following sections.
 
 ### I.2. VAT - Principles
 
-For **each frame and vertex**, the **XYZ vertex offset** is stored in the **RGB channels** of a **unique texture pixel**. This offset indicates how much the vertex has moved from the rest pose at that frame, though you can choose to store the *vertex local position* instead. Working with offsets is typically simpler, especially in *Unreal Engine*.
+For **each frame and vertex**, the **XYZ vertex offset** is stored in the **RGB channels** of a **unique pixel** in a texture. This offset indicates how much the vertex has moved from the rest pose at that frame.
 
 [img](Documentations/Images/)
 
-However, offsetting vertices in a vertex shader **does not update the normals** because it's not feasible in real-time applications. Normals may be computed in your DCC software, like Blender, in may different ways (e.g. smooth/flat/weighted normals) and *re-evaluated each frame*. Some of these methods require averaging the normals of all triangles surrounding a vertex, which a **vertex shader cannot do**. Moreover, there's *no correlation* between a *vertex position* (or offset) and its *normal* so it can't be derived from the offset alone, although ddx/ddy can be used in pixel shaders to derive flat normals from the surface position, something you probably don't want and that won't be covered in this documentation anyway.
+> [!NOTE]
+> You can opt to store the *vertex local position* instead of an *offset from a reference pose*. That vertex local position would likely have to be then transformed from local to world space based on the primitive's world matrix. Working with offsets is typically simpler, especially in *Unreal Engine*.
 
-Thus, **for each frame and vertex**, it's also common to bake the **XYZ vertex normal into a second VAT**. Note that this step can be skipped if the animations are minimal, with little movement, and/or if you don't mind the lighting/shadow issues you get from *not* updating the normals (e.g. for distant props).
+Offsetting vertices in a vertex shader **does not update the normals**, and for good reasons. Normals may be computed in your DCC software, like Blender, in may different ways (e.g. smooth/flat/weighted normals) and *re-evaluated each frame*. Some of these methods require averaging the normals of all triangles surrounding a vertex, which a **vertex shader cannot do**. Moreover, there's *no correlation* between a *vertex position* (or offset) and its *normal* so it can't be derived from the offset alone. 
+
+> [!NOTE]
+> DDX/DDY can be used in *pixel shaders* to derive *flat normals* from the surface position but it results in a faceted look, undesired in most cases.
+
+Thus, **for each frame and vertex**, it's also common to bake the **XYZ vertex normal into a second VAT**.
+
+> [!NOTE]
+> Baking/sampling a normal VAT can be skipped if the animations are minimal, with little movement, and/or if you don't mind the lighting/shadow issues you get from *not* updating the normals (e.g. for distant props).
 
 Finally, to **sample** the offset and normal VATs, a **special UVMap** is created to **center each vertex on a unique texel**. Playing the animation in the vertex shader thus simply involves *manipulating the UV coordinates* of that UVMap to sample the texels corresponding to the desired frame. Often, it simply boils down to offsetting the V component, assuming a **one-frame-per-row** packing scheme was used.
 
@@ -54,10 +65,10 @@ Finally, to **sample** the offset and normal VATs, a **special UVMap** is create
 
 The simplest way data can be stored in a VAT is using a **one-frame-per-row** packing scheme. Let's consider baking a skeletal mesh made of **400 vertices** and having **200 frames** of animation. The resulting **VAT resolution** would be **400x200**. There'd be 200 rows (frames) of 400 pixels (vertices), in other words, the VAT texture would contain the data of every vertex for every frame, one frame stacked on top of each other.
 
+[img](Documentations/Images/)
+
 > [!NOTE]
 > This method severly constraints the amount of vertices that can be baked, something that is discussed in later sections
-
-[img](Documentations/Images/)
 
 **Playing the animation** involves sampling the texture and **offsetting the V coordinate by one row/texel at a time**.
 
@@ -65,14 +76,12 @@ The simplest way data can be stored in a VAT is using a **one-frame-per-row** pa
 
 Since each frame is *adjacent* in the texture, the pixel interpolation that naturally occurs when sampling a texture on the GPU can be used to **get frame linear interpolation for free**. *UVs between two frames will average them*, allowing the V axis to be *scrolled* for smooth animation.
 
-> [!IMPORTANT]
-> UVs may be stored in 16 bits by default in some game-engines, including Unreal Engine and so precision issue might become an issue with large textures. Thus interpolation might occur between frames but also between pixels as well, something that is discussed in later sections
-
 [img](Documentations/Images/)
 
-That said, this can be *troublesome* for several reasons, which we'll cover in more detail later. For now, let's focus on one issue that arises when **baking multiple animations** and **looping a specific one**.
+> [!IMPORTANT]
+> UVs may be stored in 16 bits by default in some game-engines, including Unreal Engine. Thus, precision issue might arise with larger textures and undesired interpolation might occur between frames but also between vertices as well, something that can be prevented using Nearest sampling which however no longer allows to leverage pixel interpolation to get frame interpolation for free. This is further discussed in later sections
 
-VATs are often used to **render and animate crowds**, where some kind of state machine *selects* and *cycles through animations*. This merely involves *clamping the V coordinate* to a specific *clip's range* and *wrapping* it around when needed.
+Frame interpolation can be troublesome when **baking multiple animations** and **looping a specific one**. VATs are often used to **render and animate crowds**, where some kind of state machine *selects* and *cycles through animations*. This merely involves *clamping the V coordinate* to a specific *clip's range* and *wrapping* it around when needed.
 
 [img](Documentations/Images/)
 
@@ -80,13 +89,18 @@ In such a case, pixel interpolation (and thus frame interpolation) can be an iss
 
 [img](Documentations/Images/)
 
-This can be fixed by adding extra frames to the VAT, what may be called **padding**. For each clip, *insert its last frame before its first*, and *append its first frame after its last*, though you may choose to do just one of the two. That’s assuming you know the direction the V coordinates have to be scrolled, which may vary depending on the UV coordinate system of the targeted game engine, and that animations may only be played in that direction. While **padding** duplicates frames and thus slightly **increases the VAT resolution**, the benefits should outweigh the drawbacks.
+This can be fixed by adding extra frames to the VAT, a process we may call **padding**. For each clip, *insert its last frame before its first*, and *append its first frame after its last*. While **padding** duplicates frames and thus slightly **increases the VAT resolution**, the benefits should outweigh the drawbacks.
 
 [img](Documentations/Images/)
 
+> [!NOTE]
+> You may choose to add padding on last frames only or first frames only but that’s assuming you know the direction the V coordinates have to be scrolled, which may vary depending on the UV coordinate system of the targeted game engine/graphics API, and that animations may only be played in that direction.
+
 Now, this **one-frame-per-row** packing scheme has its limits.
 
-Firstly, it often results in **non-power-of-two** (NPOT) VATs. Vertex & frame count are unlikely to be a power of two and while NPOT textures *were once unsupported in most game engines*, the *situation has improved* but there are still some important things to note. It’s very hard to find information on what happens under the hood in older and more recent GPUs and coming with absolute truths on such a broad and obscure topic is unwise. It wouldn’t be unrealistic to assume that an **NPOT texture may be store as the next power-of-two** (POT) texture on a lot of hardware. One may even read here and there that a NPOT texture may be padded with black pixels to be converted to a POT texture, causing interpolation issues on borders, but we digress. A **400x200** texture *may* be stored as a **512x256** texture depending on your targeted hardware, game-engine, graphics API etc.
+Firstly, it often results in **non-power-of-two** (NPOT) VATs. Vertex & frame count are unlikely to be a power of two and while NPOT textures *were once unsupported in most game engines*, the *situation has improved* but there are still some important things to note. It’s very hard to find information on what happens under the hood in older and more recent GPUs and coming with absolute truths on such a broad and obscure topic is unwise.
+
+That said, it wouldn’t be unrealistic to assume that an **NPOT texture may be store as the next power-of-two** (POT) texture on a lot of hardware. One may even read here and there that a NPOT texture may be padded with black pixels to be converted to a POT texture, causing interpolation issues on borders, but we digress. A **400x200** texture *may* be stored as a **512x256** texture depending on your targeted hardware, game-engine, graphics API etc.
 
 [img](Documentations/Images/)
 
@@ -104,11 +118,11 @@ That said, when working with VATs, **exceeding 4096 pixels** is generally **not 
 
 To conclude on the **one-frame-per-row** packing scheme, assuming you don’t want to exceed 4096 pixels, it obviously limits you to baking no more than 4096 frames (which is fine for most cases) and no more than 4096 vertices (which is more restrictive). An **alternative packing method exists** that alleviates this constraint, though it comes with its *own drawbacks*.
 
-The workaround is to use **multiple-rows-per-frame** to store one frame's worth of vertex data.
+The workaround is to use **multiple rows** to store **one frame**'s worth of vertex data.
 
 [img](Documentations/Images/)
 
-Sampling the animation then involves offsetting the V coordinates by the **appropriate row/texel amount**. Note that pixel interpolation can no longer be used for frame interpolation, as it would cause interpolation with other vertex data, not the next frame.
+**Sampling** the animation then involves offsetting the V coordinates by the **appropriate row/texel amount**. Note that pixel interpolation can no longer be used for frame interpolation, as it would cause interpolation with other vertex data, not the next frame.
 
 [img](Documentations/Images/)
 
@@ -116,18 +130,26 @@ Additionally, padding is unnecessary since interpolation is no longer an option.
 
 [img](Documentations/Images/)
 
-Precision, when it comes to storing numbers in computers, is an issue as old as computer science. In fact, each vertex UV isn’t precisely centered on a texel, there’s a tiny bit of jitter and the amount of imprecision might become concerning as the distance between texels get too small, or in other words, as the VAT size increases. This is especially true as UVs might be stored in 16 bits float by default in most game engines, including Unreal Engine. Sampling VAT might thus induce a tiny bit of ‘data corruption’ as each texel not only interpolate between frames but also between themselves. Thus, Nearest sampling is often required.
-In such case, there’s often a toggle to enable 32 bits UVs on that mesh if needed. Note that it is still possible to get frame linear interpolation despite using nearest. It simply involves sampling the VAT texture a second time, one frame ahead and doing the interpolation in the vertex shader manually, something that you can probably afford.
-
-To conclude on packing methods, there’s a third method of packing frame data in VATs, one that may be called **continuous** and one that may best utilize the empty pixels resulting either from the **one-frame-per-row** packing scheme if working with the constraint of having POT VATs, or from the **multiple-rows-per-frame** packing scheme if the texture width isn’t a divisor of the vertex count.
+Precision, when it comes to storing numbers in computers, is an issue as old as computer science. In fact, each vertex UV isn’t precisely centered on a texel. There’s a tiny bit of jitter and the amount of imprecision might become concerning as the distance between texels get too small, or in other words, as the VAT size increases. This is especially true as UVs might be stored in 16 bits float by default in most game engines, including *Unreal Engine*. Sampling a VAT with pixel interpolation might thus induce a tiny bit of ‘data corruption’ as each vertex might not precisely sample the desired frame, nor the desired vertex data as well. Thus, using Nearest sampling is often recommended.
 
 [img](Documentations/Images/)
 
-In both cases, you might instead want to store one frame after the other and leave no empty pixel.
+Using Nearest sampling might not even totally fix imprecision issues because of 16 bits float UVs. As you approach 4K and even higher resolutions, the distance between each texel is so small that the amount of imprecision in the UVs might be great enough for Nearest sampling to sample the wrong texel. In such case, you might try to use 32 bits UVs on that mesh if possible. This is called *full precision UVs in Unreal Engine*.
 
 [img](Documentations/Images/)
 
-This requires a more complex algorithm to generate the UVs with which to sample the VATs, one deemed experimental because it still needs to be battle tested to prove that it doesn’t suffer from 16bits or even 32bits precision issues. This **continuous** packing method makes the most of the VAT’s resolution and ensures data is tightly packed in POT textures.
+> [!NOTE]
+> Note that it is still possible to get frame linear interpolation despite using Nearest sampling. It simply involves sampling the VAT texture a second time, one frame ahead and doing the interpolation in the vertex shader manually, something that shouldn't be too expensive for most applications. This could even be toggled off at a distance on LODs etc.
+
+To conclude on packing methods, there’s a third method of packing frame data in VATs, one that may be called **continuous** and one that best utilizes the empty pixels that you may either get with the **one-frame-per-row** packing scheme if requiring POT VATs, or more likely with the **multiple-rows-per-frame** packing scheme.
+
+[img](Documentations/Images/)
+
+This packing method simply stores one frame after the other and leaves no empty pixel.
+
+[img](Documentations/Images/)
+
+This requires a more complex algorithm to generate the UVs for sampling the VATs, and is considered experimental as it still needs thorough testing to ensure it doesn’t encounter precision issues (16-bit or even 32-bit). On paper, this **continuous** packing method promises to maximize the VAT's resolution and allowss data to be tightly packed in POT textures, ensuring wide hardware support.
 
 ## II. Data - UV VCol Data Baker
 
