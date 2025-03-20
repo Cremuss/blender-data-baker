@@ -1,17 +1,18 @@
 ![image info](Documentation/Images/gray.jpg)
-# blender-data-baker
-This addon packs several professional-grade techniques commonly used in the video game industry: Vertex Animation Textures, Bone Animation Textures, Object Animation Textures, Pivot Painter 2.0, UV Pivots and more.
+# Blender Game Tools
+
+This addon packs several **professional-grade techniques** commonly used in the **video game industry**: *Vertex Animation Textures, Bone Animation Textures, Object Animation Textures, Pivot Painter 2.0, UV Pivots* and more.
 
 ## Summary
 
-[Installation](#i.-installation)
-[Documentation](#ii.-documentation)
+[Installation](#installation)
+[Documentation](#documentation)
   [I VAT - Vertex Animation Textures Baker](#i.-vat---vertex-animation-textures-baker)
-    [I.I VAT - Intro](#i.1.-vat---intro)
+    [I.I VAT - Intro](#i.1.-vat---theory)
     [I.I VAT - Animation](#i.2.-vat---animation)
     [I.I VAT - Mesh Sequence](#i.3.-vat---mesh-sequence)
   [II Data - UV VCol Data Baker](#ii.-data---uv-vcol-data-baker)
-    [II.I Data - Intro](#ii.i.-data---intro)
+    [II.I Data - Intro](#ii.1.-data---intro)
 
 ## Glossary
 
