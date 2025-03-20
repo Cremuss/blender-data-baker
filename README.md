@@ -36,21 +36,26 @@ Then, open the **Edit>Preferences** window, go to the **Get Extensions** tab and
 
 ### I.1. VAT - Intro
 
-**Vertex Animation Texture** (VAT) is one of the simplest technique for **baking skeletal animation(s)** (or any animation) **into textures** by encoding data per vertex, per frame, in pixels. These textures are then sampled in a **vertex shader** to **play the animation** on a **static mesh**. This can lead to significant performance gains, as rendering skeletal meshes is typically the most expensive way to render animated meshes. By using static meshes, you can leverage instancing and particles to efficiently render crowds, etc. However, this technique also has its own pros and cons, which we'll discuss in the following sections. This documentation refers to VAT both as the technique of baking vertex data and the texture(s) resulting from that process.
+**Vertex Animation Texture** (VAT) is one of the simplest technique for **baking skeletal animation(s)** (or any animation) **into textures** by encoding data per vertex, per frame, in pixels. These textures are then sampled in a **vertex shader** to **play the animation** on a **static mesh**. This can lead to significant performance gains, as rendering skeletal meshes is typically the most expensive way to render animated meshes. By using static meshes, you can leverage instancing and particles to efficiently render crowds, etc. However, this technique also has its own pros and cons, which we'll discuss in the following sections.
 
 ### I.2. VAT - Principles
 
 For **each frame and vertex**, the **XYZ vertex offset** is stored in the **RGB channels** of a **unique texture pixel**. This offset indicates how much the vertex has moved from the rest pose at that frame, though you can choose to store the *vertex local position* instead. Working with offsets is typically simpler, especially in *Unreal Engine*.
 
-However, offsetting vertices in a vertex shader **does not update the normals** because it's not feasible in real-time applications. Normals may be computed in your DCC software, like Blender, in may different ways (e.g. smooth/flat/weighted normals) and *re-evaluated each frame*. Some expensive-ish methods require averaging nearby triangle normals, which a **vertex shader cannot do**.
+[img](Documentations/Images/)
 
-Thus, **for each frame and vertex**, it's also common to bake the **XYZ vertex normal into a second VAT**. Note that this step can be skipped if the animations are minimal, with little movement, and/or if you don't mind the lighting/shadow issues resulting from *not* updating the normals (e.g. for distant props).
+However, offsetting vertices in a vertex shader **does not update the normals** because it's not feasible in real-time applications. Normals may be computed in your DCC software, like Blender, in may different ways (e.g. smooth/flat/weighted normals) and *re-evaluated each frame*. Some of these methods require averaging the normals of all triangles surrounding a vertex, which a **vertex shader cannot do**. Moreover, there's *no correlation* between a *vertex position* (or offset) and its *normal* so it can't be derived from the offset alone, although ddx/ddy can be used in pixel shaders to derive flat normals from the surface position, something you probably don't want and that won't be covered in this documentation anyway.
 
-Finally, to *sample* the offset and normal VATs, a **special UVMap** is created to **center each vertex on a unique texel**. Playing the animation in the vertex shader thus simply involves *manipulating the UV coordinates* to sample the texels corresponding to the desired animation frame. Often, it simply boils down to offsetting the V component, assuming a **one-frame-per-row** packing scheme was used.
+Thus, **for each frame and vertex**, it's also common to bake the **XYZ vertex normal into a second VAT**. Note that this step can be skipped if the animations are minimal, with little movement, and/or if you don't mind the lighting/shadow issues you get from *not* updating the normals (e.g. for distant props).
+
+Finally, to **sample** the offset and normal VATs, a **special UVMap** is created to **center each vertex on a unique texel**. Playing the animation in the vertex shader thus simply involves *manipulating the UV coordinates* of that UVMap to sample the texels corresponding to the desired frame. Often, it simply boils down to offsetting the V component, assuming a **one-frame-per-row** packing scheme was used.
 
 ### I.3. VAT - Packing, Interpolation, Padding, Resolution
 
-The simplest way data can be stored in a VAT is using a **one-frame-per-row** packing scheme. Let's consider baking a skeletal mesh made of **400 vertices** and having **200 frames** of animation. The resulting **VAT resolution** would be **400x200** since each frame's vertex data would be stored in a *single row of pixels*, one pixel per vertex, creating a *'stack' of 200 rows*, one-frame-per-row, as the name implies.
+The simplest way data can be stored in a VAT is using a **one-frame-per-row** packing scheme. Let's consider baking a skeletal mesh made of **400 vertices** and having **200 frames** of animation. The resulting **VAT resolution** would be **400x200**. There'd be 200 rows (frames) of 400 pixels (vertices), in other words, the VAT texture would contain the data of every vertex for every frame, one frame stacked on top of each other.
+
+> [!NOTE]
+> This method severly constraints the amount of vertices that can be baked, something that is discussed in later sections
 
 [img](Documentations/Images/)
 
@@ -59,6 +64,9 @@ The simplest way data can be stored in a VAT is using a **one-frame-per-row** pa
 [img](Documentations/Images/)
 
 Since each frame is *adjacent* in the texture, the pixel interpolation that naturally occurs when sampling a texture on the GPU can be used to **get frame linear interpolation for free**. *UVs between two frames will average them*, allowing the V axis to be *scrolled* for smooth animation.
+
+> [!IMPORTANT]
+> UVs may be stored in 16 bits by default in some game-engines, including Unreal Engine and so precision issue might become an issue with large textures. Thus interpolation might occur between frames but also between pixels as well, something that is discussed in later sections
 
 [img](Documentations/Images/)
 
