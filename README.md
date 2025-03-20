@@ -2,16 +2,15 @@
 # blender-data-baker
 This addon packs several professional-grade techniques commonly used in the video game industry: Vertex Animation Textures, Bone Animation Textures, Object Animation Textures, Pivot Painter 2.0, UV Pivots and more.
 
-## Summary
 [Installation](#i.-installation)
 [Documentation](#ii.-documentation)
-  [I VAT - Vertex Animation Textures Baker](#i-vat---vertex-animation-textures-baker)
-    [I.I VAT - Intro](#i.i-vat---intro)
-    [I.I VAT - Animation](#i.i-vat---animation)
-    [I.I VAT - Mesh Sequence](#i.i-vat---mesh-sequence)
-  [II Data - UV VCol Data Baker](#ii-data---uv-vcol-data-baker)
-    [II.I Data - Intro](#ii.i-data---intro)
-
+  [I VAT - Vertex Animation Textures Baker](#i.-vat---vertex-animation-textures-baker)
+    [I.I VAT - Intro](#i.1.-vat---intro)
+    [I.I VAT - Animation](#i.2.-vat---animation)
+    [I.I VAT - Mesh Sequence](#i.3.-vat---mesh-sequence)
+  [II Data - UV VCol Data Baker](#ii.-data---uv-vcol-data-baker)
+    [II.I Data - Intro](#ii.i.-data---intro)
+    
 ## Installation
 This addon is available as an **official** [Blender extension](https://extensions.blender.org/about/). ![](Documentation/Images/doc_install_03.jpg)
 
@@ -23,24 +22,41 @@ Then, open the **Edit>Preferences** window, go to the **Get Extensions** tab and
 
 ## Documentation
 
-## I VAT - Vertex Animation Textures Baker
+## I. VAT - Vertex Animation Textures Baker
 
-### I.I VAT - Intro
+### I.1. VAT - Intro
 
 **Vertex Animation Texture** is one of the simplest technique for **baking skeletal animation(s)** (or any animation) **into textures**. These textures are then sampled in a **vertex shader** to **play the animation** on a **static mesh**. This can lead to significant performance gains, as rendering skeletal meshes is typically the most expensive way to render animated meshes. By using static meshes, you can leverage instancing and particles to efficiently render crowds, etc. However, this technique also has its own pros and cons, which we'll discuss in the following sections.
 
-### I.II VAT - Principles
+### I.2. VAT - Principles
 
-For each frame and vertex, the XYZ vertex offset is stored in the RGB channels of a unique texture pixel. This offset indicates how much the vertex has moved from the rest pose at that frame, though you can store the vertex local position instead, depending on your needs. Working with offsets is typically simpler, especially in Unreal Engine.
+For **each frame and vertex**, the **XYZ vertex offset** is stored in the **RGB channels** of a **unique texture pixel**. This offset indicates how much the vertex has moved from the rest pose at that frame, though you can store the *vertex local position* instead, depending on your needs. Working with offsets is typically simpler, especially in *Unreal Engine*.
 
-However, offsetting vertices in a vertex shader doesn't update the normals because it's not feasible in real-time applications. Normals may be computed in your DCC software, like Blender, in may different ways (e.g. smooth/flat/weighted normals) and re-evaluated each frame. Some expensive-ish methods require averaging nearby triangle normals, which a vertex shader cannot do.
+However, offsetting vertices in a vertex shader *doesn't update the normals* because it's not feasible in real-time applications. Normals may be computed in your DCC software, like Blender, in may different ways (e.g. smooth/flat/weighted normals) and re-evaluated each frame. Some expensive-ish methods require averaging nearby triangle normals, which a vertex shader cannot do.
 
-Thus, for each frame and vertex, it's also common to bake the XYZ vertex normal into a second texture, just like with offsets. This step can be skipped if the animations are minimal, with little movement, or if you don't mind the resulting lighting/shadow issues (e.g., for distant props).
+Thus, **for each frame and vertex**, it's also common to bake the **XYZ vertex normal into a second texture**, just like with offsets. This step can be skipped if the animations are minimal, with little movement, or if you don't mind the resulting lighting/shadow issues (e.g., for distant props).
 
-Finally, to sample the vertex animation offset and normal textures, a special UVMap is created to assign a unique texel to each vertex. Playing the animation in the vertex shader involves manipulating the UV coordinates to sample the texels for a specific frame, typically by scrolling the V component assuming a vertex-width frames-height packing scheme was used.
+Finally, to *sample* the vertex animation offset and normal textures, a **special UVMap** is created to **assign a unique texel to each vertex**. Playing the animation in the vertex shader thus simply involves *manipulating the UV coordinates* to sample the texels for a specific frame, typically by scrolling the V component assuming a vertex-width-frame-height packing scheme was used.
 
-## II Data - UV VCol Data Baker
+### I.3. VAT - Packing Schemes & Issues
 
-### II.I Data - Intro
+The simplest way frame data can be stored in VAT textures is following what may be called a vertex-width-frame-height packing scheme. Following this scheme, and assuming a given mesh has 400 vertices and 200 frames of animation, the resulting VAT textures resolution will be 400x200. The offset & normal VAT textures will each contain al the vertex data for one frame in a single line of pixels. Thus the entire animation is just a stack of 'lines'.
+Therefore, playing the animation is just a matter of sampling the texture at different V coordinates.
+
+Moreover, because each frame is adjacent to each other in the texture, the pixel interpolation that naturally happens when sampling a texture on the GPU can be leveraged to get frame linear interpolation for free. UVs that are in-between frames will average both frames, thus the V axis can simply be scrolled to get a smooth animation.
+
+Now, this packing method has its limits.
+
+First, it most likely result in non-power-of-two (NPOT) VAT textures. This used to be unspported in most game engines back in the days but the situation has much improved since then. However, there are still things worth knowing with NPOT textures.
+First, there's no such thing as NPOT textures in your GPU's memory. They are padded and stored as the next power-of-two (POT) textures. Meaning a 400x200 texture will be stored as a 512x256 texture under the hood. This doesn't affect you in any way, it just wasted GPU memory. Not so big of a deal for small-ish textures, but a 2049x2048 texture would be padded and stored as a 4096x2048 texture... Just because of that extra pixel in width.
+Second, despite NPOT textures being widely supported in most game engines nowadays, they might still be very troublesome/unsupported on some specific hardware (mobile etc) so double check this isn't an issue.
+Third, NPOT textures bring havoc with mipmapped, something that doesn't concern VAT textures anyway since they shouldn't be mipmapped but it was worth mentionning. TLDR, using NPOT textures should be okay as long as you know what you're doing.
+
+That said, when working with VATs, exceeding a resolution of 4096 pixels isn't usually recommended. Again, 8K textures might not be supported on mobiles, web apps etc and you can't just downsize a VAT texture like you would for a troublesome 8K diffuse or roughness texture. Each texel in a VAT texture has its purpose and information can't be lost.
+Using a vertex-width-frame-height packing scheme would mean you can't bake more than 4096 frames, which would certainly be ok for most use cases, and no more than 4096 vertices, which is more constraining. Fortunately, other packing methods offer a workaround but not without downsides.
+
+## II. Data - UV VCol Data Baker
+
+### II.I. Data - Intro
 
 
