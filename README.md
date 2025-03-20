@@ -34,13 +34,11 @@ Then, open the **Edit>Preferences** window, go to the **Get Extensions** tab and
 
 ## I. VAT - Vertex Animation Textures Baker
 
-### I.1. VAT - Intro
-
 **Vertex Animation Texture** (VAT) is one of the simplest technique for **baking skeletal animation(s)** (or any animation) **into textures** by encoding data per vertex, per frame, in pixels. These textures are then sampled in a **vertex shader** to **play the animation** on a **static mesh**.
 
 This can lead to significant performance gains, as rendering skeletal meshes is typically the most expensive way to render animated meshes. By using static meshes, you can leverage instancing and particles to efficiently render crowds, etc. However, this technique also has its own pros and cons, which we'll discuss in the following sections.
 
-### I.2. VAT - Principles
+### I.1. VAT - Theory
 
 For **each frame and vertex**, an **XYZ vector** is stored in the **RGB channels** of a **unique pixel** in a texture. That vector is often the vertex **offset**, indicating how much the vertex has moved from the rest pose, at that frame.
 
@@ -64,7 +62,7 @@ Playing the animation in the vertex shader thus simply involves *manipulating th
 
 [img](Documentations/Images/)
 
-### I.3. VAT - Packing, Interpolation, Padding, Resolution
+### I.2. VAT - Packing, Interpolation, Padding, Resolution
 
 The simplest way data can be stored in a VAT is using a **one-frame-per-row** packing scheme. Let's consider baking a skeletal mesh made of **400 vertices** and having **200 frames** of animation. The resulting **VAT resolution** would be **400x200**: 200 rows (frames) of 400 pixels (vertices). In other words, the VAT texture would contain the data of every vertex for every frame, one frame stacked on top of each other.
 
@@ -160,20 +158,28 @@ This requires a more complex algorithm to generate the UVs for sampling the VATs
 
 ## II. Data - UV VCol Data Baker
 
-### II.I. Data - Intro
+The Data Baker tool aims to **facilitate and automate** the process of **baking arbitrary data into vertex color and UVs**.
+
+### II.I. Data - Theory
 
 The concept of **baking data into UVs and Vertex Colors** is likely as old as real-time rendering itself.
 
-Many artists and tech artists are probably already familiar with using **vertex colors to paint masks** in the **RGBA channels**. These masks are commonly used to drive artistic processes, such as customizing a material: fading in moss here, adding cracks to a brick texture there, sprinkling sand between floor cracks, and so on. You get the idea, using vertex colors is usually a very *painterly process*.
+Many artists and tech artists are probably already familiar with using **vertex colors to paint masks** in the **RGBA channels**. These masks are commonly used to drive artistic processes, such as customizing a material: fading in moss here, adding cracks to a brick texture there, sprinkling sand between floor cracks, and so on. You get the idea, using vertex colors is usually a very *painterly process* to control artistic parameters.
 
-Taking a step back, one might wonder if the **RGB channels of vertex colors** could be used to **store the XYZ components of a vector**. Any vector. And with some care, they can. The vertex color RGBA channels can be thought of as a way **for each vertex to store four 8-bit integers**.
+Taking a step back, one might wonder if the **RGB channels of vertex colors** could simply be used to **store the XYZ components of a vector**, any vector. And with some care, they can. The vertex color RGBA channels can be thought of as a way **for each vertex to store four 8-bit integers**.
 
 Similarly, artists are often taught to view **UVs** solely as a means of **storing coordinates for texture projection** onto a 3D surface, along with the constraints that come with this mindset: *limiting texture deformation*, *hiding seams*, *staying within the [0:1] bounds* etc. However, if we take a step back, just like vertex colors, UVs can be seen as a way for **each vertex to store two 16- or 32-bit floats**. Most DCC softwares and real-time applications allow up to eight UV maps, which means up to **16 floats can be encoded per vertex**. 
 
-While you do usually need to follow general guidelines when authoring a UV map for texture projection, like limiting stretch, these constraints no longer exist and possibilities become endless when you start thinking of **UVs as a way to store arbitrary data**, such as *baking pivots*, *axis*, *normals*, *shape keys/morph targets*, and so on.
+While you do usually need to follow *general guidelines* when *authoring a UV map for texture projection*, like limiting stretch, these constraints *no longer exist* and possibilities become endless when you start thinking of **UVs as a way to store arbitrary data**, such as *baking pivots*, *axis*, *normals*, *shape keys/morph targets*, and so on.
 
-The **Data Baker tool aims to facilitate and automate this process**.
+Let’s start with a basic idea and iterate on it. This asset is composed of many individual grass blades, each with its **own pivot point**, allowing them to rotate around it to simulate wind motion amongst other things.
 
+However, once exported into a game engine, these individual meshes are **merged**, and their **pivot points are lost**. As a result, applying a simple oscillating rotation in the vertex shader causes the entire mesh to rotate together. Therefore, the idea is to **store these pivot points** so they survive the export process and can be retrieved in the vertex shader. The goal is for each vertex to rotate around its specific pivot point.
 
+To achieve this, we can **create a UV map** where **each vertex stores a UV coordinate corresponding to the XY position of the pivot point** it needs to rotate around.
 
+> [!NOTE]
+> For this asset, the Z component is irrelevant since all pivot points are placed on the ground, so Z is simply 0. However, if the Z component of the pivot point needed to be stored, an additional UV map could be used to store it in the U coordinate, leaving the V component free to store any other necessary data.
 
+> [!NOTE]
+> The position's X and Y components might exceed the [0:1] range, and could even be negative, but that's perfectly fine. Staying within the unit range is only somewhat relevant when using UVs to sample a texture. The GPU might wrap or clamp the coordinates, which would alter how the texture is sampled. However, UVs are typically 16-bit floats in most game engines, and can even be 32-bit floats if needed. This means UVs are perfectly suited to store any arbitrary number, floating point precision issues aside.
