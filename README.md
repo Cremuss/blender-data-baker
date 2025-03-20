@@ -162,4 +162,18 @@ This requires a more complex algorithm to generate the UVs for sampling the VATs
 
 ### II.I. Data - Intro
 
+The concept of **baking data into UVs and Vertex Colors** is likely as old as real-time rendering itself.
+
+Many artists and tech artists are probably already familiar with using **vertex colors to paint masks** in the **RGBA channels**. These masks are commonly used to drive artistic processes, such as customizing a material: fading in moss here, adding cracks to a brick texture there, sprinkling sand between floor cracks, and so on. You get the idea, using vertex colors is usually a very *painterly process*.
+
+Taking a step back, one might wonder if the **RGB channels of vertex colors** could be used to **store the XYZ components of a vector**. Any vector. And with some care, they can. The vertex color RGBA channels can be thought of as a way for each vertex to store **four 8-bit integers**.
+
+Similarly, artists are often taught to view **UVs** solely as a means of **storing coordinates for texture projection** onto a 3D surface, along with the constraints that come with this mindset: *limiting texture deformation*, *hiding seams*, *stay within the [0:1] bounds* etc. However, if we take a step back, just like vertex colors, UVs can be seen as a way to store **two 16- or 32-bit floats**. Most DCC softwares and real-time applications allow up to eight UV maps, which means up to **16 floats can be encoded per vertex**. 
+
+While you do need to follow general guidelines when authoring a UV map for texture projection, the possibilities are endless when you start thinking of **UVs as a way to store arbitrary data**, such as *baking pivots*, *axis*, *normals*, *shape keys/morph targets*, and so on.
+
+The **Data Baker tool aims to facilitate and automate this process**.
+
+
+
 
