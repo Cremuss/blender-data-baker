@@ -42,14 +42,14 @@ This can lead to significant performance gains, as rendering skeletal meshes is 
 
 ### I.2. VAT - Principles
 
-For **each frame and vertex**, the **XYZ vertex offset** is stored in the **RGB channels** of a **unique pixel** in a texture. This offset indicates how much the vertex has moved from the rest pose at that frame.
+For **each frame and vertex**, an **XYZ vector** is stored in the **RGB channels** of a **unique pixel** in a texture. That vector is often the vertex **offset**, indicating how much the vertex has moved from the rest pose, at that frame.
 
 [img](Documentations/Images/)
 
 > [!NOTE]
 > You can opt for storing the vertex's *local position* instead of an *offset from a reference pose*. That local position would likely have to be then transformed from local to world space based on the mesh's world matrix. Working with offsets is typically simpler, especially in *Unreal Engine*.
 
-Offsetting vertices in a vertex shader **does not update the normals**, and for good reasons. Normals may be computed in your DCC software, like Blender, in may different ways (e.g. smooth/flat/weighted normals) and *re-evaluated each frame*. Some of these methods require averaging the normals of all triangles surrounding a vertex, which a **vertex shader cannot do**. Moreover, there's *no direct correlation* between a *vertex's position* (or its offset) and its *normal* so the normal can't be derived from the offset alone. For example, a vertex moved along its normal would change position but its normal wouldn't. This is a more complex topic than many tech artists may initially realize.
+Offsetting vertices in a vertex shader **does not update the normals**, and for good reasons. Normals may be computed in your DCC software, like Blender, in many different ways and *re-evaluated each frame* (e.g. smooth/flat/weighted normals). Some of these methods require averaging the normals of all triangles surrounding a vertex, which a **vertex shader cannot do**. Moreover, there's *no direct correlation* between a *vertex's position* (or its *offset*) and its *normal* so the normal can't be derived from the offset alone. For example, a vertex moved along its normal would change position but its normal wouldn't. This is a more complex topic than many tech artists may initially realize.
 
 > [!NOTE]
 > DDX/DDY can be used in *pixel shaders* to derive *flat normals* from the surface position but it results in a faceted look that is most often undesired.
@@ -66,7 +66,7 @@ Playing the animation in the vertex shader thus simply involves *manipulating th
 
 ### I.3. VAT - Packing, Interpolation, Padding, Resolution
 
-The simplest way data can be stored in a VAT is using a **one-frame-per-row** packing scheme. Let's consider baking a skeletal mesh made of **400 vertices** and having **200 frames** of animation. The resulting **VAT resolution** would be **400x200**, 200 rows (frames) of 400 pixels (vertices). In other words, the VAT texture would contain the data of every vertex for every frame, one frame stacked on top of each other.
+The simplest way data can be stored in a VAT is using a **one-frame-per-row** packing scheme. Let's consider baking a skeletal mesh made of **400 vertices** and having **200 frames** of animation. The resulting **VAT resolution** would be **400x200**: 200 rows (frames) of 400 pixels (vertices). In other words, the VAT texture would contain the data of every vertex for every frame, one frame stacked on top of each other.
 
 [img](Documentations/Images/)
 
@@ -77,14 +77,14 @@ The simplest way data can be stored in a VAT is using a **one-frame-per-row** pa
 
 [img](Documentations/Images/)
 
-Since each frame is *adjacent* in the texture, the pixel interpolation that naturally occurs when sampling a texture on the GPU can be used to **get frame linear interpolation for free**. *UVs between two frames will average them*, allowing the V axis to be *scrolled* to get a butter smooth animation.
+Since each frame is *adjacent* in the texture, the pixel interpolation that naturally occurs when sampling a texture on the GPU can be used to **get frame linear interpolation for free**. *UVs between two frames will average them*, allowing the V axis to be simply *scrolled* to get a butter smooth animation.
 
 [img](Documentations/Images/)
 
 > [!IMPORTANT]
-> UVs may be stored in 16 bits by default in some game engines, including Unreal Engine. Thus, precision issue might arise with larger textures and undesired interpolation might occur between frames but also between vertices as well, something that can be prevented using Nearest sampling which however no longer allows to leverage pixel interpolation to get frame interpolation for free. This is further discussed in later sections
+> UVs may be stored in 16 bits by default in some game engines, including *Unreal Engine*. Thus, precision issues might arise with larger textures and undesired interpolation might occur between frames but also between vertices as well. That is something that can be prevented using Nearest sampling which, however, no longer allows us to leverage pixel interpolation to get frame interpolation for free. This is further discussed in later sections
 
-Frame interpolation can be troublesome when **baking multiple animations** and **looping a specific one**. VATs are often used to **render and animate crowds**, where some kind of state machine *selects* and *cycles through animations*. This merely involves *clamping the V coordinate* to a specific *clip's range* and *wrapping* it around when needed.
+Frame interpolation can be troublesome when **baking multiple animations** and **looping a specific one**. VATs are often used to **render and animate crowds**, where some kind of state machine *selects* and *cycles through animations*. Playing a specific clip in a VAT containing multiple clips merely involves *clamping the V coordinate* to a specific *clip's range* and *wrapping* it around when needed.
 
 [img](Documentations/Images/)
 
@@ -92,26 +92,28 @@ In such a case, pixel interpolation (and thus frame interpolation) can be an iss
 
 [img](Documentations/Images/)
 
-This can be fixed by adding extra frames to the VAT, a process we may call **padding**. For each clip, *insert its last frame before its first*, and *append its first frame after its last*. While **padding** duplicates frames and thus slightly **increases the VAT resolution**, the benefits should outweigh the drawbacks. That is, assuming you do use GPU interpolation to get frame interpolation for free, *else padding serves no purpose*.
+This can be fixed by adding extra frames to the VAT, a process we may call **padding**. For each clip, *insert its last frame before its first*, and *append its first frame after its last*.
 
 [img](Documentations/Images/)
 
+While **padding** duplicates frames and thus slightly **increases the VAT resolution**, the benefits should outweigh the drawbacks. That is, assuming you do use GPU interpolation to get frame interpolation for free, *else padding serves no purpose*.
+
 > [!NOTE]
-> You may choose to add padding on last frames only or first frames only but that’s assuming you know the direction the V coordinates have to be scrolled, which may vary depending on the UV coordinate system of the targeted game engine/graphics API, and that animations may only be played in that direction.
+> You may choose to add padding on last frames only or first frames only but that’s assuming you know the direction the V coordinates have to be scrolled in, which may vary depending on the UV coordinate system of the targeted game engine/graphics API, and that animations may only be played in that direction.
 
 Now, this **one-frame-per-row** packing scheme has its limits and there are a couple of things to note.
 
 Firstly, it often results in **non-power-of-two** (NPOT) VATs. Vertex & frame count are unlikely to be a power of two and while NPOT textures *were once unsupported in most game engines*, the *situation has improved* but there are still some important things to note. It’s very hard to find information on what happens under the hood in older and more recent GPUs and coming with absolute truths on such a broad and obscure topic is unwise.
 
-That said, it wouldn’t be unrealistic to assume that an **NPOT texture may be stored as the next power-of-two** (POT) texture on a lot of hardware. One may even read here and there older reports stating that a NPOT texture *may* be padded with black pixels to be converted to a POT texture, causing interpolation issues on borders, but we digress. A **400x200** texture *may* be stored as a **512x256** texture depending on your targeted hardware, game engine, graphics API etc. It is however not something I have experienced with *Unreal Engine* in recent years.
+That said, it wouldn’t be unrealistic to assume that an **NPOT texture may be stored as the next power-of-two (POT) texture** on *some* hardware (e.g. mobile?). One may even read here and there older reports stating that a NPOT texture *may* be automatically padded with black pixels to be converted to a POT texture, causing interpolation issues on borders, but we digress. A **400x200** texture *may* be stored as a **512x256** texture depending on your targeted hardware, game engine, graphics API etc. It is however not something I have experienced with *Unreal Engine* in recent years.
 
 [img](Documentations/Images/)
 
-While this doesn’t directly affect the user if it was true, it does waste precious GPU memory and may therefore affect memory-bandwidth. This shouldn't be worrying for smaller textures, but a 2049x2048 texture, for example, would be theoretically padded and stored as a 4096x2048 texture on *some* hardware, just because of that extra pixel in width! Worrying, but again, it doesn't seem to be the case on recent hardware. Everything seems to point to an NPOT texture behaving just like a POT texture in memory, but you never know. It was worth mentionning.
+While this doesn’t directly affect the user if it was true (this is a memory layout thingy), it would waste precious GPU memory and would therefore affect memory-bandwidth. This shouldn't be worrying for smaller textures, but a 2049x2048 texture, for example, would be theoretically stored as a 4096x2048 texture on *some* hardware, just because of that extra pixel in width! Worrying, but again, it doesn't seem to be the case on recent hardware. Everything seems to point to an NPOT texture behaving just like a POT texture in memory, but, you know, GPUs... You were warned.
 
-Secondly, while NPOT textures are **now widely supported in most game engines**, they can still be troublesome or *unsupported on certain hardware* (e.g. mobile?). It may be a good idea to double-check your targeted hardware specs.
+Secondly, while NPOT textures are **now widely supported in most game engines**, that doesn't mean they are widely supported by the hardware that you can target with said game engines (e.g. mobile?). Support may even be partial or bugged. It may be a good idea to double-check your targeted hardware specs and crash-test things.
 
-Third, NPOT textures can cause problems with *mipmapping*. While this **doesn't apply to VATs** (which shouldn’t be mipmapped), it’s still worth mentioning.
+Thirdly, NPOT textures can cause problems with **mipmapping**. While this **doesn't apply to VATs** (which shouldn’t be mipmapped), it’s still worth mentioning.
 
 In short, NPOT textures **should be fine for most use cases in 2025**. This isn’t an absolute truth of course, so don’t take their support for granted. If they happen to be an issue for you, VATs can simply be **padded with blank pixels** to **fit the next POT resolution**, and the necessary *vertex-to-texel UVMap updated* accordingly (extra padding decreases the texel size).
 
