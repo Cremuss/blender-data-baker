@@ -57,7 +57,7 @@ Offsetting vertices in a vertex shader **does not update the normals** for reaso
 Thus, **for each frame and vertex**, it's also common to bake the **XYZ vertex normal into a second VAT**. This can be skipped if the animations are minimal, with little movement, and/or if you don't mind the lighting/shadow issues you get from *not* updating the normals (e.g. for distant props).
 
 > [!IMPORTANT]
-> Vertex normals are interpolated in the pixel shader and when sampling a normal VAT, it is of utmost importance to prevent this from happening, for reasons that are discussed in the [compendium](#compendium). This essentially boils down to sampling the normal VAT in the vertex shader and using a vertex interpolator.
+> Vertex normals are interpolated in the pixel shader and when sampling a normal VAT, it is of utmost importance to prevent this from happening, for reasons that are discussed further below. This essentially boils down to sampling the normal VAT in the vertex shader and using a vertex interpolator.
 
 Finally, to **sample** the offset and normal VATs, a **special UVMap** is created to **center each vertex on a unique texel**.
 
@@ -85,7 +85,7 @@ Since each frame is *adjacent* in the texture, the pixel interpolation that natu
 ![img](Documentation/Images/)
 
 > [!IMPORTANT]
-> UVs may be stored in 16 bits by default in some game engines, including *Unreal Engine*, as discussed in the [compendium](#compendium). Thus, precision issues might arise with larger textures and undesired interpolation might occur between frames but also between vertices as well. That is something that can be prevented using Nearest sampling which, however, no longer allows us to leverage pixel interpolation to get frame interpolation for free. This is further discussed in later sections
+> UVs may be stored in 16 bits by default in some game engines, including *Unreal Engine*, as discussed in the [compendium](#compendium). Thus, precision issues might arise with larger textures and undesired interpolation might occur between frames but also between vertices as well. That is something that can be prevented using **Nearest sampling** which, however, no longer allows us to leverage pixel interpolation to get frame interpolation for free. This is further discussed in later sections
 
 Frame interpolation can be troublesome when **baking multiple animations** and **looping a specific one**. VATs are often used to **render and animate crowds**, where some kind of state machine *selects* and *cycles through animations*. Playing a specific clip in a VAT containing multiple clips merely involves *clamping the V coordinate* to a specific *clip's range* and *wrapping* it around when needed.
 
@@ -123,20 +123,20 @@ The workaround is to use **multiple rows** to store **one frame**'s worth of ver
 
 ![img](Documentation/Images/)
 
-Additionally, padding is unnecessary since interpolation is no longer an option. At this point it is recommended to use **Nearest** sampling to prevent the GPU from interpolating pixels and picking the closest texel instead. This may be particularly relevant if you happen to bake a lot of vertices and/or frames. As the VAT resolution increases to contain more data, the distance between each texel diminishes.
+Additionally, padding is unnecessary since interpolation is no longer an option. At this point it is recommended to use [**Nearest sampling**](#compendium) to prevent the GPU from interpolating pixels and picking the closest texel instead. This may be particularly relevant if you happen to bake a lot of vertices and/or frames. As the VAT resolution increases to contain more data, the distance between each texel diminishes.
 
 ![img](Documentation/Images/)
 
-Precision, when it comes to storing numbers in computers, is an issue as old as computer science. In fact, each vertex UV isn’t precisely centered on a texel. There’s a tiny bit of jitter and the amount of imprecision might become concerning as the distance between texels get too small, or in other words, as the VAT size increases. This is especially true as UVs might be stored in 16 bits float by default in most game engines, including *Unreal Engine*. This is further discussed in the [compendium](#compendium). Sampling a VAT with pixel interpolation might thus induce a tiny bit of ‘data corruption’ as each vertex might not precisely sample the desired frame, nor the desired vertex data as well. Thus, using [Nearest sampling](#compendium) is often recommended.
+Precision, when it comes to storing numbers in computers, is an issue as old as computer science. In fact, each vertex UV isn’t precisely centered on a texel. There’s a tiny bit of jitter and the amount of imprecision might become concerning as the distance between texels get too small, or in other words, as the VAT size increases. This is especially true as UVs might be stored in 16 bits float by default in most game engines, including *Unreal Engine*. This is further discussed in the [compendium](#compendium). Sampling a VAT with pixel interpolation might thus induce a tiny bit of ‘data corruption’ as each vertex might not precisely sample the desired frame, nor the desired vertex data as well. Thus, using **Nearest sampling** is often recommended.
 
 ![img](Documentation/Images/)
 
-Using Nearest sampling might not even totally fix imprecision issues because of 16 bits float UVs. As you approach 4K and even higher resolutions, the distance between each texel is so small that the amount of imprecision in the UVs might be great enough for Nearest sampling to sample the wrong texel. In such case, you might try to use 32 bits UVs on that mesh if possible. This is called *full precision UVs in Unreal Engine*. This obviously makes the mesh use [more memory](#compendium) and should only be enabled if you encounter an issue that you're sure is caused by 16 bits UVs.
+Using **Nearest sampling** might not even totally fix imprecision issues because of 16 bits float UVs. As you approach 4K and higher resolutions, the distance between each texel is so small that the amount of imprecision in the UVs might be great enough for the GPU to pick the wrong texel. In such case, you might try to use 32 bits UVs on that mesh if possible. This is called *full precision UVs in Unreal Engine*. This obviously makes the mesh use [more memory](#compendium) and should only be enabled if you encounter an issue that you're sure is caused by 16 bits UVs.
 
 ![img](Documentation/Images/)
 
 > [!NOTE]
-> Note that it is still possible to get frame linear interpolation despite using Nearest sampling. It simply involves sampling the VAT texture a second time, one frame ahead and doing the interpolation in the vertex shader manually, something that shouldn't be too expensive for most applications. This could even be toggled off at a distance on LODs etc.
+> Note that it is still possible to get **frame linear interpolation** despite using **Nearest sampling**. It simply involves sampling the VAT texture a second time, one frame ahead and doing the interpolation in the vertex shader manually, something that shouldn't be too expensive for most applications. This could even be toggled off at a distance on LODs etc.
 
 To conclude on packing methods, there’s a third method of packing frame data in VATs, one that may be called **continuous** and one that best utilizes the empty pixels that you may either get with the **one-frame-per-row** packing scheme if requiring POT VATs, or with the **multiple-rows-per-frame** packing scheme.
 
@@ -146,7 +146,7 @@ This packing method simply stores one frame after the other and leaves no empty 
 
 ![img](Documentation/Images/)
 
-This requires a more complex algorithm to generate the UVs for sampling the VATs, and is considered experimental as it still needs thorough testing to ensure it doesn’t encounter precision issues (with 16- or even 32-bit UVs). On paper, this **continuous** packing method promises to maximize the VAT's resolution and allows data to be tightly packed in POT textures, ensuring wide hardware support.
+This requires a more complex algorithm to generate the UVs for sampling the VATs, and is considered experimental as it still needs thorough testing to ensure it doesn’t encounter precision issues with a high frame count. On paper, this **continuous** packing method promises to maximize the VAT's resolution and allows data to be tightly packed in POT textures, ensuring wide hardware support.
 
 ## II. Data - UV VCol Data Baker
 
@@ -177,9 +177,11 @@ To achieve this, we can **create a UV map** where **each vertex stores a UV coor
 > The position's X and Y components might **exceed the [0:1] range**, and could even **be negative**, but that's perfectly fine. Staying within the unit range is only somewhat relevant when using UVs to sample a texture. The GPU might wrap or clamp the coordinates, which alter how the texture is sampled. However, UVs are typically 16-bit floats in most game engines, and can even be 32-bit floats if needed so they are perfectly suited to store any arbitrary number, *floating point precision issues aside*.
 
 > [!IMPORTANT]
-> When storing data in UVs, it is crucial to understand that the **UV coordinate system** in the application where the data is baked (DCC software) **may differ** from the UV coordinate system in the target application (game engine). For example, *Blender* is OpenGL-oriented, so UV(0,0) is located at the bottom-left corner. On the other hand, *Unreal Engine* is DirectX-oriented, meaning UV(0,0) is at the top-left corner. To convert between the two, a **one-minus (1-x)** operation is necessary. This operation needs to be performed only once and should ideally be done during the bake process. However, nothing prevents you from performing this operation in the vertex shader when sampling the texture instead. Additionally, it's important to recognize that the **world coordinate system may vary** between applications. While *Blender* and *Unreal Engine* have similar X and Z world axes, their *Y axes are inverted*. As a result, any Y component, whether it's a position or a vector, must have its **sign flipped**. Moreover, **scale** is important. *Blender*'s default unit is **one meter**, while *Unreal Engine*'s default unit is **one centimeter**. Therefore, a scale factor of 100 may need to be applied, either during the bake or when reading UVs as positions.
+> When storing data in UVs, it is crucial to understand that the **UV coordinate system** in the application where the data is baked (DCC software) **may differ** from the UV coordinate system in the target application (game engine). For example, *Blender* is OpenGL-oriented, so UV(0,0) is located at the bottom-left corner. On the other hand, *Unreal Engine* is DirectX-oriented, meaning UV(0,0) is at the top-left corner. To convert between the two, a **one-minus (1-x)** operation is necessary. This operation needs to be performed only once and should ideally be done during the bake process. However, nothing prevents you from performing this operation in the vertex shader when sampling the texture instead. Additionally, it's important to recognize that the **world coordinate system may vary** between applications. While *Blender* and *Unreal Engine* have similar X and Z world axes, their *Y axes are inverted*. As a result, any Y component, whether it's a position or a vector, must have its **sign flipped**. Moreover, **scale** is important. *Blender*'s default unit is **one meter**, while *Unreal Engine*'s default unit is **one centimeter**. Therefore, a scale factor of 100 may need to be applied, either during the bake or when reading UVs as positions or offsets.
 
 Once the mesh is exported into a game engine, that extra UV map can be accessed to read the value it stores. In this case, the XY components of the pivot position, processed to match both UE's UV and world coordinate systems: one-minus on the V axis, Y axis sign flipped and meters converted to centimers.
+
+An additional UV map could be used to store the pivot's Z component and the XYZ pivot position could then be reconstructed in the vertex shader like so.
 
 ## III. Tech Art Compendium
 
@@ -214,20 +216,20 @@ This results in an increased vertex count that can be predicted and confirmed in
 
 There are many misconceptions about the **cost of UV maps**, with some claiming that each additional UV map induces an extra draw call. This is simply **not true**.
 
-While *UV maps do have a cost*, it’s not as drastic as often suggested. The main impact is on the **mesh's memory footprint**: *two 16-bit floats per vertex per UV map*, in *Unreal Engine* at least, unless '*full precision UVs*' are enabled, in which case the cost increases to *two 32-bit floats per vertex per UV map*.
+While *UV maps do have a cost*, it’s not as drastic as often suggested. The main impact is on the **mesh's memory footprint**: *two 16-bit floats per vertex per UV map*, in *Unreal Engine* at least, unless '*full precision UVs*' is enabled, in which case the cost increases to *two 32-bit floats per vertex per UV map*.
 
 The increased memory footprint can be easily predicted. For example, for a mesh with 400 vertices, adding one UV map results in an additional 1.6 kilobytes of memory. This can be measured and confirmed in *Unreal Engin*e using the Size Map feature.
 
 While an increased memory footprint does have some impact on memory bandwidth sooner or later, that's about it. Adding an extra UV map to a static mesh is unlikely to cause a measurable performance impact. However, using 8 UV maps on all your assets could tell a different story. If you need that many UV maps to store arbitrary data, one might question whether UV maps are the best medium for storing this data.
 
-> [!IMPORTANT]
+> [!WARNING]
 > In most game engines, including *Unreal Engine*, there’s a hard limit on the number of UV maps: 8 for static meshes and 4 for skeletal meshes.
 
 ### III.3 UV Precision
 
 In most game engines, for performance purposes and to save memory, **UVs are stored as 16-bit floats**.
 
-16-bit floats provide *sufficient precision for everyday tasks*, such as sampling 4K textures, and allow for positive and negative values across a wide range. However, when storing arbitrary data in UVs, 16 bits may not provide enough precision. In such cases, 32-bit UVs can be enabled in most game engines. In *Unreal Engine*, this is exposed through the '*full precision UVs*' option in the static mesh editor.
+16-bit floats provide *sufficient precision for everyday tasks*, such as sampling 4K textures, and allow for positive and negative values across a wide range. However, when storing arbitrary data in UVs, 16 bits may not provide enough precision (this is discussed in greater details [further down below](#compendium). In such cases, 32-bit UVs can be enabled in most game engines. In *Unreal Engine*, this is exposed through the '*full precision UVs*' option in the static mesh editor.
 
 ### III.4 Lightmap UV
 
@@ -237,14 +239,14 @@ Good old lightmaps require unique UV layouts, and in game engines where using li
 
 Applying any kind of vertex movement or offset in a **vertex shader occurs on the GPU**, near the end of the rendering pipeline, and the **CPU is completely unaware of this step**.
 
-As a result, *collisions*, which are typically *solved on the CPU* except in a few specific custom game engines, are based on the original collision primitives you may have set up in your game engine, or the mesh's triangles, *as if no vertex shader had been applied* to them.
+As a result, *collisions*, which are typically *solved on the CPU* except in a few specific custom game engines, are stil based on the original collision primitives you may have set up in your game engine, or the mesh's triangles, *as if no vertex shader had been used*.
 
 > [!NOTE]
 > There's no way around it. Some game engines might expose settings to bake a fixed vertex offset into some kind of collision data, like *Unreal Engine*'s landscape that may account for the landscape's material WPO, but it's extremely limited and it is best assumed that collisions and vertex animation don't go hand in hand, period.
 
 ### III.6 Bounds
 
-Bounds are used by the CPU to determine if a mesh is in view and should be rendered and, similarly to collisions, **bounds are precomputed** based on the static mesh's raw vertex data.
+Bounds are used by the CPU to determine if a mesh is in view and thus, if it should be rendered. Similarly to collisions, **bounds are precomputed** based on the static mesh's raw vertex data.
 
 As a result, a mesh that **may appear to be in view** based on its precomputed bounds **might no longer be in view once its vertices are displaced on the GPU** by a vertex shader. Conversely, a mesh that **isn’t in view** and is therefore **occluded** might actually be **in view after its vertices are displaced on the GPU** by a vertex shader, but by that point, it’s **already been culled**. So, you can effectively make objects disappear!
 
@@ -308,7 +310,7 @@ With such a low resolution VAT, even considering that amount of imprecision, UVs
 
 Let’s assume the VAT is now *400x200*, still an unrealistically low resolution. Each texel is separated by *1/400*, or *0.0025*, in the U axis. The first vertex is centered on the first texel at *0.00125*, the second vertex is centered on the second texel at *0.00375* and so on. That’s already quite precise but still unlikely to cause issues.
 
-Assuming each texel deviates by *0.00006104*, the percentage of deviation would be around *4.88%*. This means GPU interpolation would not be problematic unless the values stored in nearby texels differ significantly from the texel the vertex is supposedly centered on, to the point where *4.88%* of the difference causes issues. This is assuming data isn't packed using a bit-packing algorithm like Pivot Painter's! In which case, even the smallest amount of interpolation would scramble the bits and corrupt the packed data!
+Assuming each texel deviates by *0.00006104*, the percentage of deviation would be around *4.88%*. This means GPU interpolation would not be problematic unless the values stored in nearby texels differ significantly from the texel the vertex is supposedly centered on, to the point where *4.88%* of the difference causes issues.
 
 Finally, let’s assume the VAT is *4096x500*. Each texel is separated by *1/4096*, or *0.00024414062*, in the U axis. This is much closer to the maximum expected deviation amount of *0.00006104*. The deviation would actually be around *25%*, which is starting to be concerning. A vertex sampling a specific pixel may actually include a quarter of the value stored in a nearby pixel in the sample. This is, of course, only theoretical, and in practice, things are a bit more complex and unpredictable but the principle is sound.
 
@@ -400,7 +402,7 @@ Next, when sampling the texture and reading the normal in the [0:255] range, the
 > In most game engines, sampling an 8-bit texture usually don’t spit out values in the [0:255] range but right away in the [0:1] range so the first step is likely unecessary.
 
 > [!NOTE]
-> Most game engines use specific texture compression settings for normal maps, which allow texture samples to identify normal maps and automatically perform the remapping under the hood. When sampling the RGB channels, the engine can then output the initial XYZ normal unit vector, simplifying the workflow for artists and developers, as they don’t need to manually handle the remapping.
+> Most game engines use specific texture compression settings for normal maps, which allow texture samplers to identify normal maps and automatically perform the remapping under the hood. When sampling the RGB channels, the engine can then output the initial XYZ normal unit vector, simplifying the workflow for artists and developers, as they don’t need to manually handle the remapping.
 
 **Such operations are lossy!** Assuming the normal XYZ components were initially stored as 32-bit floats with great sub-decimal precision, converting to 8-bit integers obviously reduces this precision and rounds the remapped XYZ components to the nearest corresponding integer amongst 256 possibilities. For a unit vector, this is usually not a significant issue (normal maps are almost always stored in 8-bit compressed textures), but for more arbitrary values, like positions and offsets, this could be problematic depending on your use case. Moreover, *for arbitrary values, the remapping process involves one extra step*.
 
@@ -412,10 +414,10 @@ The formula ends up being
 And to retrieve the position when sampling the texture, the inverse need to be performed
   - $(((value/255)-0.5)*2)*maxpos$
 
-The '*maxpos*' is therefore a value to both compute ahead of time and keep around to correctly decode the position encoded in 8-bit integers. This addon makes extensive use of such technique and the resulting value is refered to as the 'multiplier'.
+The '*maxpos*' is therefore a value to both compute ahead of time and keep around to correctly decode the position encoded in 8-bit integers. This addon makes extensive use of such technique and the resulting value is refered to as the '**multiplier**'.
 
 > [!IMPORTANT]
-> The same exact principles apply to Vertex Colors, which can be used to store a unit vector, like a normal, or an offset or position with the same exact constraints. Since Vertex Colors are typically stored as 8-bit integers, you will face similar limitations in terms of range and precision. When storing a unit vector or other data, the values will need to be remapped from their original range (e.g. [-1:1]) to fit within the 8-bit integer range of [0:255]. Just like with normal maps, the remapping process will result in a loss of precision, and care must be taken when using Vertex Colors to store data like positions or offsets.
+> The same exact principles apply to Vertex Colors, which can be used to store a unit vector, like a normal, or an offset or position with the same exact constraints. Since Vertex Colors are typically stored as 8-bit integers, you will face similar limitations in terms of range and precision. When storing a unit vector or other data, the values will need to be remapped from their original range (e.g. [-1:1]) to fit within the 8-bit integer range of [0:255]. The remapping process will result in a loss of precision, and care must be taken when using Vertex Colors to store data like positions or offsets.
 
 # PACKING
 
