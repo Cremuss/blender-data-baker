@@ -355,7 +355,7 @@ Next, when sampling the texture and reading the normal in the [0:255] range, the
 
 **Such operations are lossy!** Assuming the normal XYZ components were initially stored as 32-bit floats with great sub-decimal precision, converting to 8-bit integers obviously reduces this precision and rounds the remapped XYZ components to the nearest corresponding integer amongst 256 possibilities. For a unit vector, this is usually not a significant issue (normal maps are almost always stored in 8-bit compressed textures), but for more arbitrary values, like positions and offsets, this could be problematic depending on your use case. Moreover, *for arbitrary values, the remapping process involves one extra step*.
 
-Let’s assume we want to store an XYZ position in the RGB channels of an 8-bit texture. Such a position’s range is infinite. It could be something like *(-127.001, 253.321, 15.314)* or *(1558.324, -5428.256, -94644.135)*, or anything, really. Thus, first, it needs to be remapped to a [-1:1] range. This involves identifying the **greatest position or offset in the entire set of positions or offsets** you want to bake. Once you have the **highest value, all positions can be divided by it** to bring all values back into the [-1:1] range.
+Let’s assume we want to store an XYZ position in the RGB channels of an 8-bit texture. Such a position’s range is infinite. It could be something like ```(-127.001, 253.321, 15.314)``` or ```(1558.324, -5428.256, -94644.135)```, or anything, really. Thus, first, it needs to be remapped to a [-1:1] range. This involves identifying the **greatest position or offset in the entire set of positions or offsets** you want to bake. Once you have the **highest value, all positions can be divided by it** to bring all values back into the [-1:1] range.
 
 The formula ends up being
   - $(((pos/maxpos)+1)*0.5)*255$
@@ -384,29 +384,44 @@ Extra care must be taken with the latter step. Storing a unit value ranging from
 
 Once this hurdle is overcome, packing the position component (x) and the axis component (y) into a single 32-bit float (w) becomes quite straightforward.
 Packing:
-$w = floor(x) + y$
+
+```w = floor(x) + y```
+
 Unpacking:
-$x = w - frac(w)$
-$y = frac(w)$
+
+```
+x = w - frac(w)
+y = frac(w)
+```
+
 Let’s assign values to x, y:
+
 ```let x = 432.124, y = 0.5643```
+
 Packing:
-$w = floor(432.124) + 0.5643 = 432.564$
+
+```w = floor(432.124) + 0.5643 = 432.564```
+
 Unpacking:
-$x = 432.564 - frac(432.564) = 432.564 - 0.564 = 432$
-$y = frac(432.564) = 0.564$
+
+```
+x = 432.564 - frac(432.564) = 432.564 - 0.564 = 432
+y = frac(432.564) = 0.564
+```
 
 Another simple packing method involves scaling three 32-bit floats (x,y,z) to fit them into one 32-bit float (w). This method is quite rudimentary and results in severe precision loss, making it impractical for packing anything other than unit vectors.
 
 Given three x, y, z 32-bit floats, the packing algorithm is as follows:
 
-$w = $ceil(x*100*10) + ceil(y*100)*0.1 + ceil(z*100)*0.001$$
+```w = $ceil(x*100*10) + ceil(y*100)*0.1 + ceil(z*100)*0.001```
 
 Unpacking:
 
-$x = (w*0.001)$
-$y = (w*0.1 - floor(w*0.1))$
-$z = (w*10 - floor(w*10))$
+```
+x = (w*0.001)
+y = (w*0.1 - floor(w*0.1))
+z = (w*10 - floor(w*10))
+```
 
 Let’s assign values to x, y, and z:
 
@@ -414,29 +429,37 @@ Let’s assign values to x, y, and z:
 
 Packing:
 
-$w = $ceil(0.3341*100*10) + ceil(0.7644*100)*0.1 + ceil(0.0123*100)*0.001$$
-$w = 340+7.7+0.002$
-$w = 347.702$
+```
+w = $ceil(0.3341*100*10) + ceil(0.7644*100)*0.1 + ceil(0.0123*100)*0.001
+w = 340+7.7+0.002
+w = 347.702
+```
 
 Unpacking:
 
-$x = (347.702*0.001) = 0.347702$
-$y = (347.702*0.1 - floor(w*0.1)) = 0.7702$
-$z = (347.702*10 - floor(w*10)) = 0.019999$
+```
+x = (347.702*0.001) = 0.347702
+y = (347.702*0.1 - floor(w*0.1)) = 0.7702
+z = (347.702*10 - floor(w*10)) = 0.019999
+```
 
 As you can see, the unpacked values deviate quite a bit from the packed values. This is the result of bit-packing, and the precision loss may be acceptable for some use cases.
 Similarly, a different packing method can be used to pack two 32-bit floats (x,y) into a single 32-bit float (w) with less precision loss.
 
 Packing:
 
-$a = math.floor(x * (4096 - 1)) * 4096$
-$b = math.floor(y * (4096 - 1))$
-$w = a+b$
+```
+a = math.floor(x * (4096 - 1)) * 4096
+$b = math.floor(y * (4096 - 1))
+w = a+b
+```
 
 Unpacking:
 
-$x = floor(w / 4096) / (4096 - 1)$
-$y = (w % 4096) / (4096 - 1)$
+```
+x = floor(w / 4096) / (4096 - 1)
+y = (w % 4096) / (4096 - 1)
+```
 
 Again, let’s assign two values to x and y
 
@@ -444,14 +467,18 @@ Again, let’s assign two values to x and y
 
 Packing:
 
-$a = math.floor(0.3341 * (4096 - 1)) * 4096 = 5603328$
-$b = math.floor(0.7644 * (4096 - 1)) = 3130$
-$w = 5603328+3130 = 5606458$
+```
+a = math.floor(0.3341 * (4096 - 1)) * 4096 = 5603328
+b = math.floor(0.7644 * (4096 - 1)) = 3130
+w = 5603328+3130 = 5606458
+```
 
 Unpacking:
 
-$x = floor(5606458 / 4096) / (4096 - 1) = 0.3340$
-$y = (5606458 % 4096) / (4096 - 1) = 0.7643$
+```
+x = floor(5606458 / 4096) / (4096 - 1) = 0.3340
+y = (5606458 % 4096) / (4096 - 1) = 0.7643
+```
 
 The unpacked values are still slightly different from the original values but deviate much less than the XYZ packing method.
 
