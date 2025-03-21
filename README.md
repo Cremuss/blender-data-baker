@@ -324,24 +324,22 @@ While both 16- to 32-bit floats offer the ability to store any value —small or
 
 Therefore, **storing arbitrary values in an 8-bit integer** often requires a process called **remapping**.
 
-For example, if you want to encode a *normal* in an *8-bit texture*, the normal’s XYZ components may each range from [-1 to 1], and this range needs to be remapped to [0:255] for storage in an 8-bit integer. Thus, if you think about it, the middle value in the [-1:1] range, 0, should correspond to 256/2, which is 128, but since the range is 0-based, it will actually correspond to 127 in the [0:255] range.
-
-Thus, the math to remap a unit vector from [-1:1] to [0:255] is as follows:
-  - First, remap the value from [-1:1] to [0:1] using the formula: (unit vector + 1) * 0.5.
+For example, let's assume we want to encode a *normal* in an *8-bit texture*. The normal being a unit vector that may point in any direction, its XYZ components may each range from [-1 to 1]. This range needs to be remapped to [0:255] for storage in an 8-bit integer. Thus, the math to remap a unit vector from [-1:1] to [0:255] is as follows:
+  - First, remap the value from [-1:1] to [0:1] using the formula: (x + 1) * 0.5.
   - Then, multiply by 255 and use the floor function to round to the nearest integer in the [0:255] range
-    
+
 > [!NOTE]
-> Note that (unit vector + 1) * 0.5 is the same as (unit vector * 0.5) + 0.5, and this operation is often referred to as a constant-bias-scale. The convention is to usually apply the bias first.
+> Note that (x + 1) * 0.5 is the same as (x * 0.5) + 0.5, and this operation is often referred to as a constant-bias-scale. The convention is to usually apply the bias first.
 
 > [!NOTE]
 > Using the floor function might be unnecessary as the process of writing any value to an 8-bit integer will itself floor the value.
 
 Next, when sampling the texture and reading the normal in the [0:255] range, the opposite operation needs to be performed:
   - Divide the value in the [0:255] range by 255 to bring it back to the [0:1] range.
-  - Remap from [0:1] to [-1:1] using the formula:  (value - 0.5) * 2
+  - Remap from [0:1] to [-1:1] using the formula:  (x - 0.5) * 2
 
 > [!NOTE]
-> Note that  (value - 0.5) * 2 is the same as (value * 2) - 1 and is just a constant-bias-scale operation with different bias and scale parameters.
+> Note that  (x - 0.5) * 2 is the same as (x * 2) - 1 and is just a constant-bias-scale operation with different bias and scale parameters.
 
 > [!NOTE]
 > In most game engines, sampling an 8-bit texture usually don’t spit out values in the [0:255] values but [0:1] values so the first step is likely unecessary.
