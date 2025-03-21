@@ -41,7 +41,7 @@ This can lead to significant performance gains, as rendering skeletal meshes is 
 
 ### I.1. VAT - Theory
 
-For **each frame and vertex**, an **XYZ vector** is stored in the **RGB channels** of a **unique pixel** in a texture. That vector is often the vertex **offset**, indicating how much the vertex has moved from the rest pose, at that frame.
+For **each frame and vertex**, an **XYZ offset** is stored in the **RGB channels** of a **unique pixel** in a texture. That vertex **offset** indicates how much the vertex has moved from the rest pose, at that frame.
 
 [img](Documentations/Images/)
 
