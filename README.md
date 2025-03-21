@@ -284,7 +284,7 @@ Additionally, there's no direct correlation between a vertex's position (or its 
 
 This is a more complex topic than many tech artists may initially realize. For this reason, normals often have to be baked along with offsets when using vertex animation textures. However, normals can still be manually fixed in certain cases, such as when using object animation textures where the object's rotation and pivot point are encoded in the texture, allowing the normal to be rotated and corrected. Bone animation textures also encode bone pivot and quaternion information, which can be used to fix the normal.
 
-Long story short, when rotations are involved, normals can be fixed, but they cannot be when dealing with simple offsets.
+Long story short, when rotations are involved, normals can be fixed, but they cannot be when dealing with arbitrary offsets.
 
 > [!NOTE]
 > DDX/DDY can be used in *pixel shaders* to derive *flat normals* from the surface position but it results in a faceted look that is most often undesired.
@@ -306,4 +306,53 @@ Moreover, while **NPOT textures are now widely supported in most game engines**,
 NPOT textures can also cause problems with **mipmapping** and **most compression algorithms like DXT often have requirements on the texture resolution** (POT or multiple of 4). While this doesn't apply to VATs, OATs and BATs (which shouldn’t be compressed nor mipmapped), it’s still worth mentioning.
 
 In short, **NPOT should work fine for most use cases in 2025**. This isn’t an absolute truth, of course, so don’t take my word for it. 
+
+# Remapping
+
+Storing data in a texture, UVs, or Vertex Colors requires an understanding of the **format** you're working with.
+
+Most textures use **8-bit integers per pixel per channel**, which allow for storing *256 values per channel*, ranging from *0 to 255*. However, textures can also be configured to use *16-bit integers*, *16-bit floats*, *32-bit integers*, or *32-bit floats per pixel per channel*. In most game engines, you'll primarily use **8-bit integer textures for everyday tasks** (such as storing diffuse, roughness data, etc.) and **16- to 32-bit float HDR textures for more specific use cases** (tech art, VFXs etc.).
+
+> [!NOTE]
+> 8-bit textures can be compressed using various algorithms like DXT, assuming their resolution meets the requirements of these algorithms (POT or multiples of 4). HDR textures can also be compressed, but this won't be covered in this documentation, and it will be assumed that HDR textures are uncompressed.
+
+**UVs can be 16- to 32-bit floats**, while **Vertex Colors are typically 8-bit integers**.
+
+While both 16- to 32-bit floats offer the ability to store any value —small or large, positive or negative— and differ only in the precision they provide, 8-bit integers require a different approach. Being limited to 256 integers, you can draw two main conclusions:
+  - The range is very small, from 0 to 255.
+  - It only supports positive integers.
+
+Therefore, **storing arbitrary values in an 8-bit integer** often requires a process called **remapping**.
+
+For example, if you want to encode a *normal* in an *8-bit texture*, the normal’s XYZ components may each range from [-1 to 1], and this range needs to be remapped to [0:255] for storage in an 8-bit integer. Thus, if you think about it, the middle value in the [-1:1] range, 0, should correspond to 256/2, which is 128, but since the range is 0-based, it will actually correspond to 127 in the [0:255] range.
+
+Thus, the math to remap a unit vector from [-1:1] to [0:255] is as follows:
+  - First, remap the value from [-1:1] to [0:1] using the formula: (unit vector + 1) * 0.5.
+  - Then, multiply by 255 and use the floor function to round to the nearest integer in the [0:255] range
+    
+> [!NOTE]
+> Note that (unit vector + 1) * 0.5 is the same as (unit vector * 0.5) + 0.5, and this operation is often referred to as a constant-bias-scale. The convention is to usually apply the bias first.
+
+> [!NOTE]
+> Using the floor function might be unnecessary as the process of writing any value to an 8-bit integer will itself floor the value.
+
+Next, when sampling the texture and reading the normal in the [0:255] range, the opposite operation needs to be performed:
+  - Divide the value in the [0:255] range by 255 to bring it back to the [0:1] range.
+  - Remap from [0:1] to [-1:1] using the formula:  (value - 0.5) * 2
+
+> [!NOTE]
+> Note that  (value - 0.5) * 2 is the same as (value * 2) - 1 and is just a constant-bias-scale operation with different bias and scale parameters.
+
+> [!NOTE]
+> In most game engines, sampling an 8-bit texture usually don’t spit out values in the [0:255] values but [0:1] values so the first step is likely unecessary.
+
+**Such operations are lossy!** Assuming the normal XYZ components were initially stored as 32-bit floats with great sub-decimal precision, converting to 8-bit integers obviously reduces this precision and rounds the remapped XYZ components to the nearest corresponding integer amongst 256 possibilities. For a unit vector, this is usually not a significant issue (normal maps are almost always stored in 8-bit compressed textures), but for more arbitrary values, like positions and offsets, this could be problematic depending on your use case. Moreover, *for arbitrary values, the remapping process involves one extra step*.
+
+Let’s assume we want to store an XYZ position in the RGB channels of an 8-bit texture. Such a position’s range is infinite. It could be something like *(-127.001, 253.321, 15.314)* or *(1558.324, -5428.256, -94644.135)*, or anything, really. Thus, first, it needs to be remapped to a [-1:1] range. This involves identifying the **greatest position or offset in the entire set of positions or offsets** you want to bake. Once you have the **highest value, all positions can be divided by it** to bring all values back into the [-1:1] range.
+
+The formula ends up being
+  - (((position/maxposition)+1)*0.5)*255
+
+And to retrieve the position when sampling the texture, the inverse need to be performed
+  - (((value/255)-0.5)*2)*maxposition
 
