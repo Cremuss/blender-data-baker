@@ -174,7 +174,7 @@ To achieve this, we can **create a UV map** where **each vertex stores a UV coor
 > The position's X and Y components might **exceed the [0:1] range**, and could even **be negative**, but that's perfectly fine. Staying within the unit range is only somewhat relevant when using UVs to sample a texture. The GPU might wrap or clamp the coordinates, which alter how the texture is sampled. However, UVs are typically 16-bit floats in most game engines, and can even be 32-bit floats if needed so they are perfectly suited to store any arbitrary number, *floating point precision issues aside*.
 
 > [!IMPORTANT]
-> When storing data in UVs, it is crucial to understand that the **UV coordinate system** in the application where the data is baked (DCC software) **may differ** from the UV coordinate system in the target application (game engine). For example, *Blender* is OpenGL-oriented, so UV(0,0) is located at the bottom-left corner. On the other hand, *Unreal Engine* is DirectX-oriented, meaning UV(0,0) is at the top-left corner. To convert between the two, a **one-minus (1-x)** operation is necessary. Additionally, it's important to recognize that the **world coordinate system may vary** between applications. While *Blender* and *Unreal Engine* have similar X and Z world axes, their *Y axes are inverted*. As a result, any Y component, whether it's a position or a vector, must have its **sign flipped**.
+> When storing data in UVs, it is crucial to understand that the **UV coordinate system** in the application where the data is baked (DCC software) **may differ** from the UV coordinate system in the target application (game engine). For example, *Blender* is OpenGL-oriented, so UV(0,0) is located at the bottom-left corner. On the other hand, *Unreal Engine* is DirectX-oriented, meaning UV(0,0) is at the top-left corner. To convert between the two, a **one-minus (1-x)** operation is necessary. Additionally, it's important to recognize that the **world coordinate system may vary** between applications. While *Blender* and *Unreal Engine* have similar X and Z world axes, their *Y axes are inverted*. As a result, any Y component, whether it's a position or a vector, must have its **sign flipped**. Moreover, **scale** is important. *Blender*'s default unit is **one meter**, while *Unreal Engine*'s default unit is **one centimeter**. Therefore, a scale factor of 100 may need to be applied, either during the bake or when reading UVs as positions.
 
 ## III. Tech Art Compendium
 
@@ -376,6 +376,8 @@ That said, some algorithms are extremely clever, like the "*smallest three*" met
 
 Pivot Painter 2.0 also famously uses a complex bit-packing algorithm to encode a 16-bit integer into a 16-bit float in such a way that it survives the 16-to-32-bit float conversion, which is also discussed in more detail in a later section.
 
+## Packing - Integer/Fraction
+
 A simple packing method involves using the **integer part** of a 32-bit float to store the first piece of data, and using its **fractional part** to store the second.
 
 An example of this would be storing an object’s **XYZ position components** and its **forward vector XYZ components** in just **three 32-bit floats**. Each position component would be *rounded to the nearest integer*, which, assuming the position is expressed in centimeters, would result in a precision loss of 1 centimeter—arguably not a significant issue. The *forward vector/unit axis XYZ components* would then be *remapped and stored in the fractional parts*.
@@ -415,8 +417,10 @@ x = 432.564 - frac(432.564) = 432.564 - 0.564 = 432
 y = frac(432.564) = 0.564
 ```
 
-> ![NOTE]
+> [!NOTE]
 > Minimal precision loss can be expected.
+
+## Packing - Three floats into one
 
 Another simple packing method involves scaling three 32-bit floats (x,y,z) to fit them into one 32-bit float (w). This method is quite rudimentary and results in severe precision loss, making it impractical for packing anything other than unit vectors.
 
@@ -462,6 +466,8 @@ z = (347.702*10 - floor(347.702*10)) = 0.019999
 
 As you can see, the unpacked values deviate quite a bit from the packed values. This is the result of bit-packing, and the precision loss may be acceptable for some use cases.
 
+## Packing - Two floats into one
+
 Similarly, a different packing method can be used to pack two 32-bit floats (x,y) into a single 32-bit float (w) with less precision loss.
 
 Packing:
@@ -502,4 +508,7 @@ y = (5606458 % 4096) / (4096 - 1) = 0.7643
 
 The unpacked values are still slightly different from the original values but deviate much less than the XYZ packing method.
 
+These packing methods can be extremely useful when storing data in various media, especially UVs, as the number of UV maps is limited and extra UV maps consume precious memory. For instance, the forward vector's XY components of grass blades could be packed and unpacked almost for free along their XY pivots, assuming they are stored in centimeters and you don't mind a one-centimeter precision loss.
+
+Such a vector could then be used to modulate the grass wind motion based on the wind direction and the way the grass blades face.
 
