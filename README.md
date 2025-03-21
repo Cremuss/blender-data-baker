@@ -342,7 +342,7 @@ Next, when sampling the texture and reading the normal in the [0:255] range, the
 > Note that  (x - 0.5) * 2 is the same as (x * 2) - 1 and is just a constant-bias-scale operation with different bias and scale parameters.
 
 > [!NOTE]
-> In most game engines, sampling an 8-bit texture usually don’t spit out values in the [0:255] values but [0:1] values so the first step is likely unecessary.
+> In most game engines, sampling an 8-bit texture usually don’t spit out values in the [0:255] range but right away in the [0:1] range so the first step is likely unecessary.
 
 **Such operations are lossy!** Assuming the normal XYZ components were initially stored as 32-bit floats with great sub-decimal precision, converting to 8-bit integers obviously reduces this precision and rounds the remapped XYZ components to the nearest corresponding integer amongst 256 possibilities. For a unit vector, this is usually not a significant issue (normal maps are almost always stored in 8-bit compressed textures), but for more arbitrary values, like positions and offsets, this could be problematic depending on your use case. Moreover, *for arbitrary values, the remapping process involves one extra step*.
 
