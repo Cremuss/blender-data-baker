@@ -41,7 +41,7 @@ This can lead to significant performance gains, as rendering skeletal meshes is 
 
 ### I.1. VAT - Theory
 
-For **each frame and vertex**, an **XYZ offset** is stored in the **RGB channels** of a **unique pixel** in a texture. That vertex **offset** indicates how much the vertex has moved from the rest pose, at that frame.
+For **each frame and vertex**, an **XYZ offset** is stored in the **RGB channels** of a **unique pixel** in a texture. That vertex offset indicates how much the vertex has moved from the rest pose, at that frame.
 
 [img](Documentations/Images/)
 
@@ -102,21 +102,20 @@ While **padding** duplicates frames and thus slightly **increases the VAT resolu
 
 Now, this **one-frame-per-row** packing scheme has its limits and there are a couple of things to note.
 
-Firstly, it often results in **non-power-of-two** (NPOT) VATs. Vertex & frame count are unlikely to be a power of two and while NPOT textures *were once unsupported in most game engines*, the *situation has improved* but there are still some important things to note. It’s very hard to find information on what happens under the hood in older and more recent GPUs and coming with absolute truths on such a broad and obscure topic is unwise.
+Firstly, it often results in **non-power-of-two (NPOT) VATs**. Vertex & frame count are unlikely to be a power of two and while NPOT textures *were once unsupported* in most game engines, the *situation has greatly improved* but there are still some important things to note. It’s very hard to find information on what happens under the hood in older and more recent GPUs and coming with absolute truths on such a broad and obscure topic is unwise.
 
-That said, it wouldn’t be unrealistic to assume that an **NPOT texture may be stored as the next power-of-two (POT) texture** on *some* hardware (e.g. mobile?). One may even read here and there older reports stating that a NPOT texture *may* be automatically padded with black pixels to be converted to a POT texture, causing interpolation issues on borders, but we digress. A **400x200** texture *may* be stored as a **512x256** texture depending on your targeted hardware, game engine, graphics API etc. It is however not something I have experienced with *Unreal Engine* in recent years.
+That said, it wouldn’t be unrealistic to assume that an *NPOT texture may be stored as the next power-of-two (POT) texture on some hardware* (e.g. mobile?). One may even read here and there older reports stating that a NPOT texture may be automatically padded with black pixels to be converted to a POT texture, causing interpolation issues on borders, but we digress. A *400x200* texture may be stored as a *512x256* texture depending on your targeted hardware, game engine, graphics API etc. It is however not something I have experienced with Unreal Engine in recent years.
 
-[img](Documentations/Images/)
+While this doesn’t directly affect the user if it was true (this is a memory layout thingy), it would waste precious GPU memory and may therefore affect memory-bandwidth. This shouldn't be worrying for smaller textures, but a 2049x2048 texture, for example, would be theoretically stored as a 4096x2048 texture on *some*, likely ancient, hardware, just because of that extra pixel in width! Worrying, but again, it doesn't seem to be the case on recent hardware. Everything seems to point to an NPOT texture behaving just like a POT texture in memory, but, you know, GPUs... They can’t be trusted!
 
-While this doesn’t directly affect the user if it was true (this is a memory layout thingy), it would waste precious GPU memory and would therefore affect memory-bandwidth. This shouldn't be worrying for smaller textures, but a 2049x2048 texture, for example, would be theoretically stored as a 4096x2048 texture on *some* hardware, just because of that extra pixel in width! Worrying, but again, it doesn't seem to be the case on recent hardware. Everything seems to point to an NPOT texture behaving just like a POT texture in memory, but, you know, GPUs... You were warned.
+Moreover, while **NPOT textures are now widely supported in most game engines**, that doesn't mean they are widely supported by the *hardware* that you may target with said game engines (e.g. mobile?). Support may even be partial or bugged. It may be a good idea to double-check your targeted hardware specs and ensure NPOT textures behave well on it.
 
-Secondly, while NPOT textures are **now widely supported in most game engines**, that doesn't mean they are widely supported by the hardware that you can target with said game engines (e.g. mobile?). Support may even be partial or bugged. It may be a good idea to double-check your targeted hardware specs and crash-test things.
+NPOT textures can also cause problems with **mipmapping and most compression algorithms** like DXT often have requirements on the texture resolution (POT or multiple of 4). While this doesn't apply to VATs (which shouldn’t be compressed nor mipmapped), it’s still worth mentioning.
 
-Thirdly, NPOT textures can cause problems with **mipmapping**. While this **doesn't apply to VATs** (which shouldn’t be mipmapped), it’s still worth mentioning.
+In short, **NPOT VATs should work fine for most use cases in 2025**. This isn’t an absolute truth, of course, so don’t take my word for it. 
 
-In short, NPOT textures **should be fine for most use cases in 2025**. This isn’t an absolute truth of course, so don’t take their support for granted. If they happen to be an issue for you, VATs can simply be **padded with blank pixels** to **fit the next POT resolution**, and the necessary *vertex-to-texel UVMap updated* accordingly (extra padding decreases the texel size).
-
-[img](Documentations/Images/)
+> [!NOTE]
+> If NPOT textures become an issue for you, VATs can simply be padded with blank pixels to fit the next POT resolution, and the corresponding vertex-to-texel UV map can be updated (note that extra padding decreases the texel size). Again, this is probably not something you need to worry about in 2025, but it had to be mentioned for the sake of completeness in this documentation.
 
 That said, when working with VATs, **exceeding 4096 pixels** is generally **not recommended**. 8K textures may not be supported on mobile or web apps and you **can't downsize a VAT** like you would with, say, a troublesome diffuse or roughness texture. Each texel in a VAT texture *holds specific information* that *can’t be lost* or averaged with nearby texels! If you need such a high resolution anyway, one might ask if VATs is the correct method for what you have in mind. There are other baking techniques that may be better suited, like *Bone Animation Textures*, and newer file formats like *Alembic* that may be worth considering.
 
