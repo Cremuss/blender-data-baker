@@ -285,11 +285,11 @@ Texture formats are discussed in greater details the [remapping](#remapping) sec
 
 That said, *RGBA8* is likely impractical for storing arbitrary data in many technical applications, such as *VATs* or *Pivot Painter*, among others. The range is simply too limiting. *HDR* textures, either 16- or 32-bit, are typically required for these applications. Additionally, **texture compression is usually not an option**. Compression typically *scrambles bits* and *performs optimizations in blocks of pixels*, something that can't be allowed in our case. *VATs* and similar techniques store critical information per pixel that *can't be averaged* with nearby pixels without causing undesired issues. Moreover, Pivot Painter uses [**bit-packing**](#bit-packing) methods, and **any form of compression would scramble bits, corrupting the packed data**.
 
-For all these reasons, you'll likely want to limit yourself to uncompressed *RGBA8*, *HDR16*, or *HDR32* texture compression settings.
+For all these reasons, you'll likely want to limit yourself to uncompressed *RGBA8*, *HDR16*, or *HDR32* texture compression settings when using techniques like VATs.
 
 Having a solid understanding of the technical implications of working with a specific data storage format is just the beginning. **Sampling** can be just as complex.
 
-Most often, textures are sampled using coordinates stored in UV maps. As mentioned [here](#UVs), these UVs are typically stored as *16-bit floats*, which limits precision. This is usually not a problem, as small amounts of jitter or imprecision in UVs typically don't cause visible issues when sampling regular textures, such as diffuse or roughness maps.
+Most often, textures are sampled using coordinates stored in UV maps. As mentioned [here](#UVs), these UVs are typically stored as *16-bit floats*, which limits precision. This is usually not a problem, as small amounts of jitter or imprecision in UVs typically don't cause visible issues when sampling regular textures, such as diffuse or roughness maps. 
 
 However, for *VATs*, *Pivot Painter*, and similar techniques where *each vertex needs to precisely read the data stored in a particular pixel*, UV jitter resulting from the use of 16-bit floats can become an issue.
 
@@ -301,24 +301,27 @@ Let’s assume the VAT is 2x2, an unrealistically low resolution, but let’s go
 
 The smallest positive value that can be represented by a 16-bit value is ```0000010000000000```, or ```2⁻¹⁴ × (1 + 0/1024) ≈ 0.00006104```. This gives you an idea of how precise UVs can be.
 
-With such a low resolution VAT, even considering that amount of imprecision, UVs will be dead-centered on each texel, and GPU interpolation won’t be an issue. The other three nearest texels won’t realistically participate in the sample.
+With such a low resolution VAT, even considering that amount of imprecision, UVs will be dead-centered on each texel, and GPU interpolation won’t be an issue. The other three nearest texels won’t participate in the sample in a meaningful way.
+
+> [!WARNING]
+> That's assuming data isn't packed using a bit-packing algorithm like Pivot Painter's! In which case, even the smallest amount of interpolation would scramble the bits and corrupt the packed data!
 
 Let’s assume the VAT is now *400x200*, still an unrealistically low resolution. Each texel is separated by *1/400*, or *0.0025*, in the U axis. The first vertex is centered on the first texel at *0.00125*, the second vertex is centered on the second texel at *0.00375* and so on. That’s already quite precise but still unlikely to cause issues.
 
-Assuming each texel deviates by *0.00006104*, the percentage of deviation would be around *4.88%*. This means GPU interpolation would not be problematic unless the values stored in nearby texels differ significantly from the texel the vertex is theoretically centered on, to the point where *4.88%* of the difference causes issues. This is assuming data isn't packed using a bit-packing algorithm like Pivot Painter's! In which case, even the smallest amount of interpolation would scramble the bits and corrupt the packed data!
+Assuming each texel deviates by *0.00006104*, the percentage of deviation would be around *4.88%*. This means GPU interpolation would not be problematic unless the values stored in nearby texels differ significantly from the texel the vertex is supposedly centered on, to the point where *4.88%* of the difference causes issues. This is assuming data isn't packed using a bit-packing algorithm like Pivot Painter's! In which case, even the smallest amount of interpolation would scramble the bits and corrupt the packed data!
 
-Finally, let’s assume the VAT is *4096x500*. Each texel is separated by *1/4096*, or *0.00024414062*, in the U axis. This is much closer to *0.00006104*. The deviation would be around *25%*, which is starting to be concerning. A vertex sampling a specific pixel may actually include a quarter of the value stored in a nearby pixel. This is, of course, only theoretical, and in practice, things are a bit more complex and unpredictable but the principle is sound.
+Finally, let’s assume the VAT is *4096x500*. Each texel is separated by *1/4096*, or *0.00024414062*, in the U axis. This is much closer to the maximum expected deviation amount of *0.00006104*. The deviation would actually be around *25%*, which is starting to be concerning. A vertex sampling a specific pixel may actually include a quarter of the value stored in a nearby pixel in the sample. This is, of course, only theoretical, and in practice, things are a bit more complex and unpredictable but the principle is sound.
 
-All in all, relying on GPU interpolation may only be practical in certain scenarios. Typically, techniques that involve storing specific data in specific texels don't play well with interpolation, nor any kind of texture compression for that matter, and require **Nearest sampling**. This method tells the GPU to avoid interpolation and pick the **nearest texel given a UV coordinate**. 
+All in all, relying on GPU interpolation is perfectly fine for sampling everyday textures, but it may only be practical in certain scenarios for more technical applications. Typically, techniques that involve **storing specific data in specific texels don't work well with interpolation** (or any kind of texture compression, for that matter) and require **Nearest sampling**. This method instructs the GPU to avoid interpolation and select the nearest texel based on a given UV coordinate.
 
-This nearly eliminates the 16-bit imprecision issues, as any jitter in the UVs will still result in the GPU selecting the correct texel with nearest sampling. That is, unless the imprecision is high enough that the UV ends up closer to a nearby texel instead, which shouldn't happen with 4096 textures and 16-bit precision.
+This nearly eliminates the 16-bit imprecision issues, as any jitter in the UVs will still result in the GPU selecting the correct texel with **Nearest sampling**. That is, unless the imprecision is high enough that the UV ends up closer to a nearby texel instead, which shouldn't happen with 4K textures and 16-bit precision.
 
-If this does occur, you might want to consider using both Nearest sampling and 32-bit UVs. This should provide all the precision required, even for 8K textures.
+If this does occur, you might want to consider using both **Nearest sampling and 32-bit UVs**. This should provide all the precision required, even for 8K textures.
 
 > [!NOTE]
-> As mentioned in the [VAT](#VAT) section, pixel interpolation can provide frame interpolation for free. However, as we've noted, *Nearest sampling* may be the preferred choice. In that case, frame interpolation can still be achieved, but you'll need an **additional texture sample** to fetch the data one frame ahead and **perform the interpolation manually**.
+> As mentioned in the [VAT](#VAT) section, pixel interpolation can provide frame interpolation for free. However, as we've noted, **Nearest sampling** may be the preferred choice to avoid unexpected results. In that case, frame interpolation can still be achieved, but you'll need an **additional texture sample to fetch the data one frame ahead and perform the interpolation manually**.
 
-To summarize, it’s not the higher texture resolution itself that causes precision issues. Rather, for VATs and similar techniques, the problem arises because vertices need to be centered on texels, and as texture resolution increases, the texels become smaller, making imprecision issues more apparent.
+To summarize, it’s not the higher texture resolution itself that causes precision issues. Rather, for VATs and similar techniques, the problem arises because vertices need to be dead-centered on texels, and as texture resolution increases, the texels become smaller, making imprecision issues more apparent.
 
 ### Fixing Normals
 
