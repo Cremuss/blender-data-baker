@@ -16,15 +16,15 @@ This addon packs several **professional-grade techniques** commonly used in the 
 
 ## Glossary
 
-**VAT** - The process of baking vertex data into textures AND the resulting texture(s)
-**BAT** - The process of baking bone data into textures AND the resulting texture(s)
-**OAT** - The process of baking object data into textures AND the resulting texture(s)
-**POT** - Power of Two
-**NPOT** - Non Power of Two
-**DCC** - Digital content creation. A term commonly used to refer to generic 3D applications, such as 3dsMax, Blender, Maya etc.
-**PBR** - Physically based rendering
-**DXT** - A group of lossy texture compression algorithms (sometimes also called DXTn, DXTC, or BCn)
-**Texel** - Texture element, or texture pixel. The fundamental unit of a texture map
+- **VAT** - The process of baking vertex data into textures AND the resulting texture(s)
+- **BAT** - The process of baking bone data into textures AND the resulting texture(s)
+- **OAT** - The process of baking object data into textures AND the resulting texture(s)
+- **POT** - Power of Two
+- **NPOT** - Non Power of Two
+- **DCC** - Digital content creation. A term commonly used to refer to generic 3D applications, such as 3dsMax, Blender, Maya etc.
+- **PBR** - Physically based rendering
+- **DXT** - A group of lossy texture compression algorithms (sometimes also called DXTn, DXTC, or BCn)
+- **Texel** - Texture element, or texture pixel. The fundamental unit of a texture map
     
 ## Installation
 This addon is available as an **official** [Blender extension](https://extensions.blender.org/about/). ![](Documentation/Images/doc_install_03.jpg)
