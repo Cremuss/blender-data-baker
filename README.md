@@ -385,7 +385,9 @@ Extra care must be taken with the latter step. Storing a unit value ranging from
 Once this hurdle is overcome, packing the position component (x) and the axis component (y) into a single 32-bit float (w) becomes quite straightforward.
 Packing:
 
-```w = floor(x) + y```
+```
+w = floor(x) + y
+```
 
 Unpacking:
 
@@ -396,11 +398,15 @@ y = frac(w)
 
 Let’s assign values to x, y:
 
-```let x = 432.124, y = 0.5643```
+```
+let x=432.124, y=0.5643
+```
 
 Packing:
 
-```w = floor(432.124) + 0.5643 = 432.564```
+```
+w = floor(432.124) + 0.5643 = 432.564
+```
 
 Unpacking:
 
@@ -409,11 +415,19 @@ x = 432.564 - frac(432.564) = 432.564 - 0.564 = 432
 y = frac(432.564) = 0.564
 ```
 
+> ![NOTE]
+> Minimal precision loss can be expected.
+
 Another simple packing method involves scaling three 32-bit floats (x,y,z) to fit them into one 32-bit float (w). This method is quite rudimentary and results in severe precision loss, making it impractical for packing anything other than unit vectors.
 
 Given three x, y, z 32-bit floats, the packing algorithm is as follows:
 
-```w = $ceil(x*100*10) + ceil(y*100)*0.1 + ceil(z*100)*0.001```
+```
+a = ceil(x*100*10)
+b = ceil(y*100)*0.1
+c = ceil(z*100)*0.001
+w = a + b + c
+```
 
 Unpacking:
 
@@ -425,32 +439,36 @@ z = (w*10 - floor(w*10))
 
 Let’s assign values to x, y, and z:
 
-```let x=0.3341, y=0.7644, z=0.0123```
+```
+let x=0.3341, y=0.7644, z=0.0123
+```
 
 Packing:
 
 ```
-w = $ceil(0.3341*100*10) + ceil(0.7644*100)*0.1 + ceil(0.0123*100)*0.001
-w = 340+7.7+0.002
-w = 347.702
+a = ceil(0.3341*100*10) = 340
+b = ceil(0.7644*100)*0.1 = 7.7
+c = ceil(0.0123*100)*0.001 = 0.002
+w = a+b+c = 340 + 7.7 + 0.002 = 347.702
 ```
 
 Unpacking:
 
 ```
 x = (347.702*0.001) = 0.347702
-y = (347.702*0.1 - floor(w*0.1)) = 0.7702
-z = (347.702*10 - floor(w*10)) = 0.019999
+y = (347.702*0.1 - floor(347.702*0.1)) = 0.7702
+z = (347.702*10 - floor(347.702*10)) = 0.019999
 ```
 
 As you can see, the unpacked values deviate quite a bit from the packed values. This is the result of bit-packing, and the precision loss may be acceptable for some use cases.
+
 Similarly, a different packing method can be used to pack two 32-bit floats (x,y) into a single 32-bit float (w) with less precision loss.
 
 Packing:
 
 ```
-a = math.floor(x * (4096 - 1)) * 4096
-$b = math.floor(y * (4096 - 1))
+a = floor(x * (4096 - 1)) * 4096
+b = floor(y * (4096 - 1))
 w = a+b
 ```
 
@@ -463,13 +481,15 @@ y = (w % 4096) / (4096 - 1)
 
 Again, let’s assign two values to x and y
 
-```let x=0.3341, y=0.7644```
+```
+let x=0.3341, y=0.7644
+```
 
 Packing:
 
 ```
-a = math.floor(0.3341 * (4096 - 1)) * 4096 = 5603328
-b = math.floor(0.7644 * (4096 - 1)) = 3130
+a = floor(0.3341 * (4096 - 1)) * 4096 = 5603328
+b = floor(0.7644 * (4096 - 1)) = 3130
 w = 5603328+3130 = 5606458
 ```
 
