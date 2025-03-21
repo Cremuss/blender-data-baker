@@ -49,15 +49,12 @@ For **each frame and vertex**, an **XYZ offset** is stored in the **RGB channels
 > [!NOTE]
 > You can opt for storing the vertex's *local position* instead of an *offset from a reference pose*. That local position would likely have to be then transformed from local to world space based on the mesh's world matrix. Working with offsets is typically simpler, especially in *Unreal Engine*.
 
-Offsetting vertices in a vertex shader **does not update the normals**, and for good reasons. Normals may be computed in your DCC software, like *Blender*, in many different ways and *re-evaluated each frame* (e.g. smooth/flat/weighted normals). Some of these methods require averaging the normals of all triangles surrounding a vertex, which a **vertex shader cannot do**. Moreover, there's *no direct correlation* between a *vertex's position* (or its *offset*) and its *normal* so the normal can't be derived from the offset alone. For example, a vertex moved along its normal would change position but its normal wouldn't. This is a more complex topic than many tech artists may initially realize.
-
-> [!NOTE]
-> DDX/DDY can be used in *pixel shaders* to derive *flat normals* from the surface position but it results in a faceted look that is most often undesired.
+Offsetting vertices in a vertex shader **does not update the normals** for reasons explained in detail in the [compendium](#compendium).
 
 Thus, **for each frame and vertex**, it's also common to bake the **XYZ vertex normal into a second VAT**. This can be skipped if the animations are minimal, with little movement, and/or if you don't mind the lighting/shadow issues you get from *not* updating the normals (e.g. for distant props).
 
 > [!IMPORTANT]
-> Vertex normals are interpolated in the pixel shader and when sampling a normal VAT, it is of utmost importance to prevent this from happening, for reasons that are discussed in later sections. This essentially boils down to sampling the normal VAT in the vertex shader and using a vertex interpolator.
+> Vertex normals are interpolated in the pixel shader and when sampling a normal VAT, it is of utmost importance to prevent this from happening, for reasons that are discussed in the [compendium](#compendium). This essentially boils down to sampling the normal VAT in the vertex shader and using a vertex interpolator.
 
 Finally, to **sample** the offset and normal VATs, a **special UVMap** is created to **center each vertex on a unique texel**.
 
@@ -85,7 +82,7 @@ Since each frame is *adjacent* in the texture, the pixel interpolation that natu
 [img](Documentations/Images/)
 
 > [!IMPORTANT]
-> UVs may be stored in 16 bits by default in some game engines, including *Unreal Engine*. Thus, precision issues might arise with larger textures and undesired interpolation might occur between frames but also between vertices as well. That is something that can be prevented using Nearest sampling which, however, no longer allows us to leverage pixel interpolation to get frame interpolation for free. This is further discussed in later sections
+> UVs may be stored in 16 bits by default in some game engines, including *Unreal Engine*, as discussed in the [compendium](#compendium). Thus, precision issues might arise with larger textures and undesired interpolation might occur between frames but also between vertices as well. That is something that can be prevented using Nearest sampling which, however, no longer allows us to leverage pixel interpolation to get frame interpolation for free. This is further discussed in later sections
 
 Frame interpolation can be troublesome when **baking multiple animations** and **looping a specific one**. VATs are often used to **render and animate crowds**, where some kind of state machine *selects* and *cycles through animations*. Playing a specific clip in a VAT containing multiple clips merely involves *clamping the V coordinate* to a specific *clip's range* and *wrapping* it around when needed.
 
@@ -106,24 +103,14 @@ While **padding** duplicates frames and thus slightly **increases the VAT resolu
 
 Now, this **one-frame-per-row** packing scheme has its limits and there are a couple of things to note.
 
-Firstly, it often results in **non-power-of-two (NPOT) VATs**. Vertex & frame count are unlikely to be a power of two and while NPOT textures *were once unsupported* in most game engines, the *situation has greatly improved* but there are still some important things to note. It’s very hard to find information on what happens under the hood in older and more recent GPUs and coming with absolute truths on such a broad and obscure topic is unwise.
-
-That said, it wouldn’t be unrealistic to assume that an *NPOT texture may be stored as the next power-of-two (POT) texture on some hardware* (e.g. mobile?). One may even read here and there older reports stating that a NPOT texture may be automatically padded with black pixels to be converted to a POT texture, causing interpolation issues on borders, but we digress. A *400x200* texture may be stored as a *512x256* texture depending on your targeted hardware, game engine, graphics API etc. It is however not something I have experienced with Unreal Engine in recent years.
-
-While this doesn’t directly affect the user if it was true (this is a memory layout thingy), it would waste precious GPU memory and may therefore affect memory-bandwidth. This shouldn't be worrying for smaller textures, but a 2049x2048 texture, for example, would be theoretically stored as a 4096x2048 texture on *some*, likely ancient, hardware, just because of that extra pixel in width! Worrying, but again, it doesn't seem to be the case on recent hardware. Everything seems to point to an NPOT texture behaving just like a POT texture in memory, but, you know, GPUs... They can’t be trusted!
-
-Moreover, while **NPOT textures are now widely supported in most game engines**, that doesn't mean they are widely supported by the *hardware* that you may target with said game engines (e.g. mobile?). Support may even be partial or bugged. It may be a good idea to double-check your targeted hardware specs and ensure NPOT textures behave well on it.
-
-NPOT textures can also cause problems with **mipmapping and most compression algorithms** like DXT often have requirements on the texture resolution (POT or multiple of 4). While this doesn't apply to VATs (which shouldn’t be compressed nor mipmapped), it’s still worth mentioning.
-
-In short, **NPOT VATs should work fine for most use cases in 2025**. This isn’t an absolute truth, of course, so don’t take my word for it. 
+Firstly, it often results in **non-power-of-two (NPOT) VATs**. Vertex & frame count are simply unlikely to be a power of two. NPOT textures are thoroughly discussed in the [compendium](#compendium), and while they shouldn't cause much concern in 2025 in the context of VATs, it may still be wise to assume they *may not* behave like any regular POT texture.
 
 > [!NOTE]
-> If NPOT textures become an issue for you, VATs can simply be padded with blank pixels to fit the next POT resolution, and the corresponding vertex-to-texel UV map can be updated (note that extra padding decreases the texel size). Again, this is probably not something you need to worry about in 2025, but it had to be mentioned for the sake of completeness in this documentation.
+> If NPOT textures are an issue, VATs can simply be padded with blank pixels to fit the next POT resolution, and the corresponding vertex-to-texel UV map can be updated (note that extra padding decreases the texel size). Again, this is probably not something you need to worry about in 2025, but it had to be mentioned for the sake of completeness in this documentation.
 
-That said, when working with VATs, **exceeding 4096 pixels** is generally **not recommended**. 8K textures may not be supported on mobile or web apps and you **can't downsize a VAT** like you would with, say, a troublesome diffuse or roughness texture. Each texel in a VAT texture *holds specific information* that *can’t be lost* or averaged with nearby texels! If you need such a high resolution anyway, one might ask if VATs is the correct method for what you have in mind. There are other baking techniques that may be better suited, like *Bone Animation Textures*, and newer file formats like *Alembic* that may be worth considering.
+Secondly, when working with VATs, **exceeding 4096 pixels** is generally **not recommended**. 8K textures may not be supported on mobile or web apps and you **can't downsize a VAT** like you would with, say, a troublesome diffuse or roughness texture. Each texel in a VAT texture *holds specific information* that *can’t be lost* or averaged with nearby texels! If you need such a high resolution anyway, one might ask if VATs is the correct method for what you have in mind. There are other baking techniques that may be better suited, like *Bone Animation Textures*, and newer file formats like *Alembic* that may be worth considering.
 
-To conclude on the **one-frame-per-row** packing scheme, assuming you don’t want to exceed 4096 pixels, it obviously limits you to baking no more than 4096 frames (which is fine for most cases) and no more than 4096 vertices (which is more restrictive). An **alternative packing method exists** that alleviates this constraint, though it comes with its *own drawbacks*.
+Finally, assuming you don’t want to exceed 4096 pixels, it obviously limits you to baking *no more than 4096 frames* (which is fine for most cases) and *no more than 4096 vertices* (which is more restrictive). An **alternative packing method exists** that alleviates this constraint, though it comes with its *own drawbacks*.
 
 The workaround is to use **multiple rows** to store **one frame**'s worth of vertex data.
 
@@ -137,18 +124,18 @@ Additionally, padding is unnecessary since interpolation is no longer an option.
 
 [img](Documentations/Images/)
 
-Precision, when it comes to storing numbers in computers, is an issue as old as computer science. In fact, each vertex UV isn’t precisely centered on a texel. There’s a tiny bit of jitter and the amount of imprecision might become concerning as the distance between texels get too small, or in other words, as the VAT size increases. This is especially true as UVs might be stored in 16 bits float by default in most game engines, including *Unreal Engine*. Sampling a VAT with pixel interpolation might thus induce a tiny bit of ‘data corruption’ as each vertex might not precisely sample the desired frame, nor the desired vertex data as well. Thus, using Nearest sampling is often recommended.
+Precision, when it comes to storing numbers in computers, is an issue as old as computer science. In fact, each vertex UV isn’t precisely centered on a texel. There’s a tiny bit of jitter and the amount of imprecision might become concerning as the distance between texels get too small, or in other words, as the VAT size increases. This is especially true as UVs might be stored in 16 bits float by default in most game engines, including *Unreal Engine*. This is further discussed in the [compendium](#compendium). Sampling a VAT with pixel interpolation might thus induce a tiny bit of ‘data corruption’ as each vertex might not precisely sample the desired frame, nor the desired vertex data as well. Thus, using [Nearest sampling](#compendium) is often recommended.
 
 [img](Documentations/Images/)
 
-Using Nearest sampling might not even totally fix imprecision issues because of 16 bits float UVs. As you approach 4K and even higher resolutions, the distance between each texel is so small that the amount of imprecision in the UVs might be great enough for Nearest sampling to sample the wrong texel. In such case, you might try to use 32 bits UVs on that mesh if possible. This is called *full precision UVs in Unreal Engine*. This obviously makes the mesh use more memory and should only be enabled if you encounter an issue that you're sure is caused by 16 bits UVs.
+Using Nearest sampling might not even totally fix imprecision issues because of 16 bits float UVs. As you approach 4K and even higher resolutions, the distance between each texel is so small that the amount of imprecision in the UVs might be great enough for Nearest sampling to sample the wrong texel. In such case, you might try to use 32 bits UVs on that mesh if possible. This is called *full precision UVs in Unreal Engine*. This obviously makes the mesh use [more memory](#compendium) and should only be enabled if you encounter an issue that you're sure is caused by 16 bits UVs.
 
 [img](Documentations/Images/)
 
 > [!NOTE]
 > Note that it is still possible to get frame linear interpolation despite using Nearest sampling. It simply involves sampling the VAT texture a second time, one frame ahead and doing the interpolation in the vertex shader manually, something that shouldn't be too expensive for most applications. This could even be toggled off at a distance on LODs etc.
 
-To conclude on packing methods, there’s a third method of packing frame data in VATs, one that may be called **continuous** and one that best utilizes the empty pixels that you may either get with the **one-frame-per-row** packing scheme if requiring POT VATs, or more likely with the **multiple-rows-per-frame** packing scheme.
+To conclude on packing methods, there’s a third method of packing frame data in VATs, one that may be called **continuous** and one that best utilizes the empty pixels that you may either get with the **one-frame-per-row** packing scheme if requiring POT VATs, or with the **multiple-rows-per-frame** packing scheme.
 
 [img](Documentations/Images/)
 
@@ -157,8 +144,6 @@ This packing method simply stores one frame after the other and leaves no empty 
 [img](Documentations/Images/)
 
 This requires a more complex algorithm to generate the UVs for sampling the VATs, and is considered experimental as it still needs thorough testing to ensure it doesn’t encounter precision issues (with 16- or even 32-bit UVs). On paper, this **continuous** packing method promises to maximize the VAT's resolution and allows data to be tightly packed in POT textures, ensuring wide hardware support.
-
-@note vertex normal interpolation!
 
 ## II. Data - UV VCol Data Baker
 
@@ -287,5 +272,38 @@ The same goes for **virtual shadow maps**, which are, at their core, a **caching
 
 This is not my area of expertise, but vertex shaders are typically supported in ray-tracing implementations. Some options might need to be enabled, as this feature may not be enabled by default due to the increased cost. In Unreal Engine, this used to be exposed through the ‘Evaluate World Position Offset’ option at one point. However, I’m not up-to-date and can't guarantee that this is still the case.
 
+### III.10 Image compression settings & 
 
+### Fixing Normals
+
+Offsetting vertices in a vertex shader does not update the normals, and for good reasons.
+
+Normals can be computed in your DCC software, like Blender, in many different ways and re-evaluated each frame (e.g., smooth/flat/weighted normals). Some of these methods require averaging the normals of all triangles surrounding a vertex, which a vertex shader cannot do.
+
+Additionally, there's no direct correlation between a vertex's position (or its offset) and its normal, so the normal can't be derived from the offset alone. For example, a vertex moved along its normal would change position, but its normal wouldn't.
+
+This is a more complex topic than many tech artists may initially realize. For this reason, normals often have to be baked along with offsets when using vertex animation textures. However, normals can still be manually fixed in certain cases, such as when using object animation textures where the object's rotation and pivot point are encoded in the texture, allowing the normal to be rotated and corrected. Bone animation textures also encode bone pivot and quaternion information, which can be used to fix the normal.
+
+Long story short, when rotations are involved, normals can be fixed, but they cannot be when dealing with simple offsets.
+
+> [!NOTE]
+> DDX/DDY can be used in *pixel shaders* to derive *flat normals* from the surface position but it results in a faceted look that is most often undesired.
+
+### Sampling VAT Normal
+
+interpolation issue!
+
+### NPOT Textures
+
+While non-power-of-two textures *were once not even considerable* in most game engines, the *situation has greatly improved* but there are still some important things to note. It’s very hard to find information on what happens under the hood in older and more recent GPUs and coming with absolute truths on such a broad and obscure topic is unwise.
+
+That said, it wouldn’t be unrealistic to assume that, on *some hardware* (e.g. mobile?) an *NPOT texture may be stored as the next power-of-two (POT) texture*. One may even read here and there older reports stating that a NPOT texture may be automatically padded with black pixels to be converted to a POT texture, potentially causing interpolation issues on borders, but we digress. A *400x200* texture may be stored as a *512x256* texture depending on your targeted hardware, game engine, graphics API etc. It is however not something I have directly experienced with *Unreal Engine*.
+
+While this doesn’t directly affect the user if it was true (this is a memory layout thingy), it would waste precious GPU memory and may therefore affect memory-bandwidth. This shouldn't be worrying for smaller textures, but a 2049x2048 texture, for example, would be theoretically stored as a 4096x2048 texture on *some*, likely ancient, hardware, just because of that extra pixel in width! Worrying, but again, it doesn't seem to be the case on recent hardware. Everything seems to point to an NPOT texture behaving just like a POT texture in memory, but, you know, GPUs... They can’t be trusted!
+
+Moreover, while **NPOT textures are now widely supported in most game engines**, that doesn't mean they are widely supported by the *hardware* that you may target with said game engines (e.g. mobile?). Support may even be partial or bugged. It may be a good idea to double-check your targeted hardware specs and ensure NPOT textures behave well on it.
+
+NPOT textures can also cause problems with **mipmapping** and **most compression algorithms like DXT often have requirements on the texture resolution** (POT or multiple of 4). While this doesn't apply to VATs, OATs and BATs (which shouldn’t be compressed nor mipmapped), it’s still worth mentioning.
+
+In short, **NPOT should work fine for most use cases in 2025**. This isn’t an absolute truth, of course, so don’t take my word for it. 
 
