@@ -22,6 +22,8 @@ This addon packs several **professional-grade techniques** commonly used in the 
 **POT** - Power of Two
 **NPOT** - Non Power of Two
 **DCC** - Digital content creation. A term commonly used to refer to generic 3D applications, such as 3dsMax, Blender, Maya etc.
+**PBR** - Physically based rendering
+**DXT** - A group of lossy texture compression algorithms (sometimes also called DXTn, DXTC, or BCn)
     
 ## Installation
 This addon is available as an **official** [Blender extension](https://extensions.blender.org/about/). ![](Documentation/Images/doc_install_03.jpg)
@@ -274,13 +276,17 @@ The same goes for **virtual shadow maps**, which are, at their core, a **caching
 
 This is not my area of expertise, but vertex shaders are typically supported in ray-tracing implementations. Some options might need to be enabled, as this feature may not be enabled by default due to the increased cost. In Unreal Engine, this used to be exposed through the ‘Evaluate World Position Offset’ option at one point. However, I’m not up-to-date and can't guarantee that this is still the case.
 
-### III.10 Image compression settings
+### III.10 Texture compression settings, interpolation & nearest sampling
 
-When using textures to store arbitrary data, it’s important to understand not only how the**data can be stored and compressed** but also how it is **sampled**.
+When using textures to store arbitrary data, it’s important to understand not only how the **data can be stored and compressed** but also how it is **sampled**.
 
-Texture formats are discussed in greater details the [remapping](#remapping) section. To summarize, textures are most often RGBA 8-bit integers, which makes it impractical to store arbitrary data for many technical applications. HDR textures, either 16-bit or 32-bit, are usually required for things like VATs, OATs, BATs, Pivot Painter, and similar applications.
+Texture formats are discussed in greater details the [remapping](#remapping) section. To summarize, textures are most often RGBA 8-bit integers, commonly referred to as *RGBA8*. This format works well for everyday use and is more than sufficient for most *PBR* maps (such as diffuse, roughness, etc.), even allowing for different DXT compression modes depending on the use case.
 
-That said, having a solid understanding of the technical implications of working with a specific data storage format is just the beginning. **Sampling** can be just as complex.
+That said, RGBA8 is likely impractical for storing arbitrary data in many technical applications, such as *VATs* or *Pivot Painter*, among others. The range is simply too limiting. HDR textures, either 16- or 32-bit, are typically required for these applications. Additionally, **texture compression is usually not an option**. Compression typically *scrambles bits* and *performs optimizations in blocks of pixels*, something that can't be allowed in our case. *VATs* and similar techniques store critical information per pixel that *can't be averaged* with nearby pixels without causing undesired issues. Pivot Painter uses [**bit-packing**](#bit-packing) methods, and **any form of compression would scramble bits, corrupting the packed data**.
+
+For all these reasons, you'll likely want to limit yourself to uncompressed RGBA8, HDR 16, or HDR 32 texture compression settings.
+
+Having a solid understanding of the technical implications of working with a specific data storage format is just the beginning. **Sampling** can be just as complex.
 
 Most often, textures are sampled using coordinates stored in UV maps. As mentioned earlier, these UVs are typically stored as *16-bit floats*, which limits precision. This is usually not a problem, as small amounts of jitter or imprecision in UVs typically don't cause visible issues when sampling regular textures, such as diffuse or roughness maps.
 
