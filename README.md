@@ -305,7 +305,7 @@ With such a low resolution VAT, even considering that amount of imprecision, UVs
 
 Let’s assume the VAT is now *400x200*, still an unrealistically low resolution. Each texel is separated by *1/400*, or *0.0025*, in the U axis. The first vertex is centered on the first texel at *0.00125*, the second vertex is centered on the second texel at *0.00375* and so on. That’s already quite precise but still unlikely to cause issues.
 
-Assuming each texel deviates by *0.00006104*, the percentage of deviation would only be around *4.88%*. This means GPU interpolation would not be problematic unless the values stored in nearby texels differ significantly from the texel the vertex is theoritically centered on, to the point where 4.88% of the difference causes problems.
+Assuming each texel deviates by *0.00006104*, the percentage of deviation would be around *4.88%*. This means GPU interpolation would not be problematic unless the values stored in nearby texels differ significantly from the texel the vertex is theoretically centered on, to the point where *4.88%* of the difference causes issues. This is assuming data isn't packed using a bit-packing algorithm like Pivot Painter's! In which case, even the smallest amount of interpolation would scramble the bits and corrupt the packed data!
 
 Finally, let’s assume the VAT is *4096x500*. Each texel is separated by *1/4096*, or *0.00024414062*, in the U axis. This is much closer to *0.00006104*. The deviation would be around *25%*, which is starting to be concerning. A vertex sampling a specific pixel may actually include a quarter of the value stored in a nearby pixel. This is, of course, only theoretical, and in practice, things are a bit more complex and unpredictable but the principle is sound.
 
@@ -317,6 +317,8 @@ If this does occur, you might want to consider using both Nearest sampling and 3
 
 > [!NOTE]
 > As mentioned in the [VAT](#VAT) section, pixel interpolation can provide frame interpolation for free. However, as we've noted, *Nearest sampling* may be the preferred choice. In that case, frame interpolation can still be achieved, but you'll need an **additional texture sample** to fetch the data one frame ahead and **perform the interpolation manually**.
+
+To summarize, it’s not the higher texture resolution itself that causes precision issues. Rather, for VATs and similar techniques, the problem arises because vertices need to be centered on texels, and as texture resolution increases, the texels become smaller, making imprecision issues more apparent.
 
 ### Fixing Normals
 
