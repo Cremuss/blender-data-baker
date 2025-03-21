@@ -334,6 +334,12 @@ For example, let's assume we want to encode a *normal* in an *8-bit texture*. Th
 > [!NOTE]
 > Using the floor function might be unnecessary as the process of writing any value to an 8-bit integer will itself floor the value.
 
+This remapping process is what causes our beloved normal maps to look the way they do. Normal maps are mostly baked in tangent space, meaning the orientation is relative to the underlying low-poly surface. Because of this, it’s likely that the orientation of the source high-poly surface relative to the target low-poly surface will produce a vector that is almost always mostly *pointing towards +Z and neutral in X and Y*.
+
+As a result of the remapping process, this typically results in a light bluish color in the normal map, as the remapped XYZ values tend to center around the positive Z axis, with minimal displacement in the X and Y axes. This bluish tint reflects the neutral, upward-facing direction in tangent space, which corresponds to the +Z direction in the normal map’s RGB channels.
+
+[img](Documentations/Images/remapping_01.png)
+
 Next, when sampling the texture and reading the normal in the [0:255] range, the opposite operation needs to be performed:
   - Divide the value in the [0:255] range by 255 to bring it back to the [0:1] range.
   - Remap from [0:1] to [-1:1] using the formula: $(x - 0.5) * 2$
@@ -343,6 +349,9 @@ Next, when sampling the texture and reading the normal in the [0:255] range, the
 
 > [!NOTE]
 > In most game engines, sampling an 8-bit texture usually don’t spit out values in the [0:255] range but right away in the [0:1] range so the first step is likely unecessary.
+
+> [!NOTE]
+> Most game engines use specific texture compression settings for normal maps, which allow texture samples to identify normal maps and automatically perform the remapping under the hood. When sampling the RGB channels, the engine can then output the initial XYZ normal unit vector, simplifying the workflow for artists and developers, as they don’t need to manually handle the remapping.
 
 **Such operations are lossy!** Assuming the normal XYZ components were initially stored as 32-bit floats with great sub-decimal precision, converting to 8-bit integers obviously reduces this precision and rounds the remapped XYZ components to the nearest corresponding integer amongst 256 possibilities. For a unit vector, this is usually not a significant issue (normal maps are almost always stored in 8-bit compressed textures), but for more arbitrary values, like positions and offsets, this could be problematic depending on your use case. Moreover, *for arbitrary values, the remapping process involves one extra step*.
 
