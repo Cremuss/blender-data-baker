@@ -329,7 +329,7 @@ For example, let's assume we want to encode a *normal* in an *8-bit texture*. Th
   - Then, multiply by 255 and use the floor function to round to the nearest integer in the [0:255] range
 
 > [!NOTE]
-> Note that $(x + 1) * 0.5$ is the same as $(x * 0.5) + 0.5$, and this operation is often referred to as a constant-bias-scale. The convention is to usually apply the bias first.
+> $(x + 1) * 0.5$ is the same as $(x * 0.5) + 0.5$, and this operation is often referred to as a constant-bias-scale. The convention is to usually apply the bias first.
 
 > [!NOTE]
 > Using the floor function might be unnecessary as the process of writing any value to an 8-bit integer will itself floor the value.
@@ -345,7 +345,7 @@ Next, when sampling the texture and reading the normal in the [0:255] range, the
   - Remap from [0:1] to [-1:1] using the formula: $(x - 0.5) * 2$
 
 > [!NOTE]
-> Note that  $(x - 0.5) * 2$ is the same as $(x * 2) - 1$ and is just a constant-bias-scale operation with different bias and scale parameters.
+> $(x - 0.5) * 2$ is the same as $(x * 2) - 1$ and is just a constant-bias-scale operation with different bias and scale parameters.
 
 > [!NOTE]
 > In most game engines, sampling an 8-bit texture usually don’t spit out values in the [0:255] range but right away in the [0:1] range so the first step is likely unecessary.
@@ -358,7 +358,7 @@ Next, when sampling the texture and reading the normal in the [0:255] range, the
 Let’s assume we want to store an XYZ position in the RGB channels of an 8-bit texture. Such a position’s range is infinite. It could be something like *(-127.001, 253.321, 15.314)* or *(1558.324, -5428.256, -94644.135)*, or anything, really. Thus, first, it needs to be remapped to a [-1:1] range. This involves identifying the **greatest position or offset in the entire set of positions or offsets** you want to bake. Once you have the **highest value, all positions can be divided by it** to bring all values back into the [-1:1] range.
 
 The formula ends up being
-  - $(((pos/max_pos)+1)*0.5)*255$
+  - $(((pos/maxpos)+1)*0.5)*255$
 
 And to retrieve the position when sampling the texture, the inverse need to be performed
   - $(((value/255)-0.5)*2)*maxpos$
