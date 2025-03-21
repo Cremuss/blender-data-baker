@@ -352,5 +352,7 @@ The formula ends up being
   - $(((pos/max_pos)+1)*0.5)*255$
 
 And to retrieve the position when sampling the texture, the inverse need to be performed
-  - $(((value/255)-0.5)*2)*max_pos$
+  - $(((value/255)-0.5)*2)*maxpos$
+
+The '*maxpos*' is therefore a value to both compute ahead of time and keep around to correctly decode the position encoded in 8-bit integers. This addon makes extensive use of such technique and the resulting value is refered to as the 'multiplier'.
 
