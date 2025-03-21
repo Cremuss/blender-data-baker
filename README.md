@@ -55,6 +55,9 @@ Offsetting vertices in a vertex shader **does not update the normals**, and for 
 
 Thus, **for each frame and vertex**, it's also common to bake the **XYZ vertex normal into a second VAT**. This can be skipped if the animations are minimal, with little movement, and/or if you don't mind the lighting/shadow issues you get from *not* updating the normals (e.g. for distant props).
 
+> [!IMPORTANT]
+> Vertex normals are interpolated in the pixel shader and when sampling a normal VAT, it is of utmost importance to prevent this from happening, for reasons that are discussed in later sections. This essentially boils down to sampling the normal VAT in the vertex shader and using a vertex interpolator.
+
 Finally, to **sample** the offset and normal VATs, a **special UVMap** is created to **center each vertex on a unique texel**.
 
 [img](Documentations/Images/)
@@ -137,7 +140,7 @@ Precision, when it comes to storing numbers in computers, is an issue as old as 
 
 [img](Documentations/Images/)
 
-Using Nearest sampling might not even totally fix imprecision issues because of 16 bits float UVs. As you approach 4K and even higher resolutions, the distance between each texel is so small that the amount of imprecision in the UVs might be great enough for Nearest sampling to sample the wrong texel. In such case, you might try to use 32 bits UVs on that mesh if possible. This is called *full precision UVs in Unreal Engine*.
+Using Nearest sampling might not even totally fix imprecision issues because of 16 bits float UVs. As you approach 4K and even higher resolutions, the distance between each texel is so small that the amount of imprecision in the UVs might be great enough for Nearest sampling to sample the wrong texel. In such case, you might try to use 32 bits UVs on that mesh if possible. This is called *full precision UVs in Unreal Engine*. This obviously makes the mesh use more memory and should only be enabled if you encounter an issue that you're sure is caused by 16 bits UVs.
 
 [img](Documentations/Images/)
 
@@ -152,7 +155,7 @@ This packing method simply stores one frame after the other and leaves no empty 
 
 [img](Documentations/Images/)
 
-This requires a more complex algorithm to generate the UVs for sampling the VATs, and is considered experimental as it still needs thorough testing to ensure it doesn’t encounter precision issues (16-bit or even 32-bit). On paper, this **continuous** packing method promises to maximize the VAT's resolution and allowss data to be tightly packed in POT textures, ensuring wide hardware support.
+This requires a more complex algorithm to generate the UVs for sampling the VATs, and is considered experimental as it still needs thorough testing to ensure it doesn’t encounter precision issues (with 16- or even 32-bit UVs). On paper, this **continuous** packing method promises to maximize the VAT's resolution and allows data to be tightly packed in POT textures, ensuring wide hardware support.
 
 @note vertex normal interpolation!
 
