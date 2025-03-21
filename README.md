@@ -325,21 +325,21 @@ While both 16- to 32-bit floats offer the ability to store any value —small or
 Therefore, **storing arbitrary values in an 8-bit integer** often requires a process called **remapping**.
 
 For example, let's assume we want to encode a *normal* in an *8-bit texture*. The normal being a unit vector that may point in any direction, its XYZ components may each range from [-1 to 1]. This range needs to be remapped to [0:255] for storage in an 8-bit integer. Thus, the math to remap a unit vector from [-1:1] to [0:255] is as follows:
-  - First, remap the value from [-1:1] to [0:1] using the formula: (x + 1) * 0.5.
+  - First, remap the value from [-1:1] to [0:1] using the formula: $(x + 1) * 0.5$.
   - Then, multiply by 255 and use the floor function to round to the nearest integer in the [0:255] range
 
 > [!NOTE]
-> Note that (x + 1) * 0.5 is the same as (x * 0.5) + 0.5, and this operation is often referred to as a constant-bias-scale. The convention is to usually apply the bias first.
+> Note that $(x + 1) * 0.5$ is the same as $(x * 0.5) + 0.5$, and this operation is often referred to as a constant-bias-scale. The convention is to usually apply the bias first.
 
 > [!NOTE]
 > Using the floor function might be unnecessary as the process of writing any value to an 8-bit integer will itself floor the value.
 
 Next, when sampling the texture and reading the normal in the [0:255] range, the opposite operation needs to be performed:
   - Divide the value in the [0:255] range by 255 to bring it back to the [0:1] range.
-  - Remap from [0:1] to [-1:1] using the formula:  (x - 0.5) * 2
+  - Remap from [0:1] to [-1:1] using the formula: $(x - 0.5) * 2$
 
 > [!NOTE]
-> Note that  (x - 0.5) * 2 is the same as (x * 2) - 1 and is just a constant-bias-scale operation with different bias and scale parameters.
+> Note that  $(x - 0.5) * 2$ is the same as $(x * 2) - 1$ and is just a constant-bias-scale operation with different bias and scale parameters.
 
 > [!NOTE]
 > In most game engines, sampling an 8-bit texture usually don’t spit out values in the [0:255] range but right away in the [0:1] range so the first step is likely unecessary.
@@ -349,8 +349,8 @@ Next, when sampling the texture and reading the normal in the [0:255] range, the
 Let’s assume we want to store an XYZ position in the RGB channels of an 8-bit texture. Such a position’s range is infinite. It could be something like *(-127.001, 253.321, 15.314)* or *(1558.324, -5428.256, -94644.135)*, or anything, really. Thus, first, it needs to be remapped to a [-1:1] range. This involves identifying the **greatest position or offset in the entire set of positions or offsets** you want to bake. Once you have the **highest value, all positions can be divided by it** to bring all values back into the [-1:1] range.
 
 The formula ends up being
-  - (((position/maxposition)+1)*0.5)*255
+  - $(((pos/max_pos)+1)*0.5)*255$
 
 And to retrieve the position when sampling the texture, the inverse need to be performed
-  - (((value/255)-0.5)*2)*maxposition
+  - $(((value/255)-0.5)*2)*max_pos$
 
