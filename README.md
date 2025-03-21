@@ -48,7 +48,7 @@ For **each frame and vertex**, an **XYZ offset** is stored in the **RGB channels
 > [!NOTE]
 > You can opt for storing the vertex's *local position* instead of an *offset from a reference pose*. That local position would likely have to be then transformed from local to world space based on the mesh's world matrix. Working with offsets is typically simpler, especially in *Unreal Engine*.
 
-Offsetting vertices in a vertex shader **does not update the normals**, and for good reasons. Normals may be computed in your DCC software, like Blender, in many different ways and *re-evaluated each frame* (e.g. smooth/flat/weighted normals). Some of these methods require averaging the normals of all triangles surrounding a vertex, which a **vertex shader cannot do**. Moreover, there's *no direct correlation* between a *vertex's position* (or its *offset*) and its *normal* so the normal can't be derived from the offset alone. For example, a vertex moved along its normal would change position but its normal wouldn't. This is a more complex topic than many tech artists may initially realize.
+Offsetting vertices in a vertex shader **does not update the normals**, and for good reasons. Normals may be computed in your DCC software, like *Blender*, in many different ways and *re-evaluated each frame* (e.g. smooth/flat/weighted normals). Some of these methods require averaging the normals of all triangles surrounding a vertex, which a **vertex shader cannot do**. Moreover, there's *no direct correlation* between a *vertex's position* (or its *offset*) and its *normal* so the normal can't be derived from the offset alone. For example, a vertex moved along its normal would change position but its normal wouldn't. This is a more complex topic than many tech artists may initially realize.
 
 > [!NOTE]
 > DDX/DDY can be used in *pixel shaders* to derive *flat normals* from the surface position but it results in a faceted look that is most often undesired.
@@ -182,12 +182,13 @@ However, once exported into a game engine, these individual meshes are **merged*
 To achieve this, we can **create a UV map** where **each vertex stores a UV coordinate corresponding to the XY position of the pivot point** it needs to rotate around.
 
 > [!NOTE]
-> For this asset, the Z component is irrelevant since all pivot points are placed on the ground, so Z is simply 0. However, if the Z component of the pivot point needed to be stored, an additional UV map could be used to store it in the U coordinate, leaving the V component free to store any other necessary data.
+> For this asset, the **Z component is irrelevant** since all pivot points are placed on the ground, so Z is simply 0. However, if the Z component of the pivot point needed to be stored, an additional UV map could be used to store it in the U coordinate, leaving the V component free to store any other necessary data.
 
-> [!NOTE]
-> The position's X and Y components might exceed the [0:1] range, and could even be negative, but that's perfectly fine. Staying within the unit range is only somewhat relevant when using UVs to sample a texture. The GPU might wrap or clamp the coordinates, which would alter how the texture is sampled. However, UVs are typically 16-bit floats in most game engines, and can even be 32-bit floats if needed. This means UVs are perfectly suited to store any arbitrary number, floating point precision issues aside.
+> [!IMPORTANT]
+> The position's X and Y components might **exceed the [0:1] range**, and could even **be negative**, but that's perfectly fine. Staying within the unit range is only somewhat relevant when using UVs to sample a texture. The GPU might wrap or clamp the coordinates, which alter how the texture is sampled. However, UVs are typically 16-bit floats in most game engines, and can even be 32-bit floats if needed so they are perfectly suited to store any arbitrary number, *floating point precision issues aside*.
 
-
+> [!IMPORTANT]
+> When storing data in UVs, it is crucial to understand that the **UV coordinate system** in the application where the data is baked (DCC software) **may differ** from the UV coordinate system in the target application (game engine). For example, *Blender* is OpenGL-oriented, so UV(0,0) is located at the bottom-left corner. On the other hand, *Unreal Engine* is DirectX-oriented, meaning UV(0,0) is at the top-left corner. To convert between the two, a **one-minus (1-x)** operation is necessary. Additionally, it's important to recognize that the **world coordinate system may vary** between applications. While *Blender* and *Unreal Engine* have similar X and Z world axes, their *Y axes are inverted*. As a result, any Y component, whether it's a position or a vector, must have its **sign flipped**.
 
 ## III. Tech Art Compendium
 
@@ -198,7 +199,7 @@ Applying any kind of vertex movement or offset in a **vertex shader occurs on th
 As a result, *collisions still occur as if the vertices aren't moving*, based on the original collision primitives you may have set up in your game engine, or the mesh's triangles, *as if no vertex shader was applied to it*.
 
 > [!NOTE]
-> There's no way around it. Some game engines might expose settings to bake a fixed vertex offset into some kind of collision data, like Unreal Engine's landscape that may account for the landscape's material WPO, but it's extremely limited and it is best assumed that collisions and vertex animation don't go hand in hand, period.
+> There's no way around it. Some game engines might expose settings to bake a fixed vertex offset into some kind of collision data, like *Unreal Engine*'s landscape that may account for the landscape's material WPO, but it's extremely limited and it is best assumed that collisions and vertex animation don't go hand in hand, period.
 
 ### III.2 BOUNDS
 
@@ -218,7 +219,7 @@ Still on the topic of precomputed data: distance fields. They somewhat recently 
 However, finding the distance to the nearest surface of the mesh for each voxel can be quite a taxing process for the CPU and/or GPU, which is why **distance fields are**, in most game engines, **precomputed** based on the mesh’s raw vertex data. As a result, no vertex animation or offset is taken into account, which can **mess up lighting, shadows**, and any other rendering feature that relies on distance fields in one way or another. A mesh may be animated on the GPU using a vertex shader, but its distance field will remain fixed.
 
 > [!NOTE]
-> Similar to bounds, there’s no magic solution to this, and the one "hack" typically exposed in game engines like Unreal Engine is the ability to offset the distance field self-shadowing distance. Unfortunately, this doesn’t offer much flexibility.
+> Similar to bounds, there’s no magic solution to this, and the one "hack" typically exposed in game engines like *Unreal Engine* is the ability to offset the distance field self-shadowing distance. Unfortunately, this doesn’t offer much flexibility.
 
 Moving vertices on the GPU isn’t really compatible with techniques that rely on precomputed data, that’s just how things are.
 
@@ -229,7 +230,7 @@ Moving vertices on the GPU isn’t really compatible with techniques that rely o
 The same goes for **virtual shadow maps**, which are, at their core, a **caching technique**. And just like with any caching technique, you’re not supposed to trash the cache every frame just because a few vertices have moved. You can, but you’ll likely incur a very high cost.
 
 > [!NOTE]
-> I’m not up to date with the solutions currently offered in Unreal Engine to alleviate these issues, and I’d imagine it's a similar situation in other engines implementing similar technologies. Unfortunately, offsetting vertices on the GPU doesn’t work well with these new technologies; that's just the reality of the situation. It doesn’t mean it’s impossible, but you’ll need to dig deep and find the tricks that work best for your specific use case (e.g. it’s possible to tell Nanite a maximum offset per material)
+> I’m not up to date with the solutions currently offered in *Unreal Engine* to alleviate these issues, and I’d imagine it's a similar situation in other engines implementing similar technologies. Unfortunately, offsetting vertices on the GPU doesn’t work well with these new technologies; that's just the reality of the situation. It doesn’t mean it’s impossible, but you’ll need to dig deep and find the tricks that work best for your specific use case (e.g. it’s possible to tell Nanite a maximum offset per material)
 
 ### III.5 Lightmap UV
 
