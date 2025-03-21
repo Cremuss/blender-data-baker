@@ -21,6 +21,7 @@ This addon packs several **professional-grade techniques** commonly used in the 
 **OAT** - The process of baking object data into textures AND the resulting texture(s)
 **POT** - Power of Two
 **NPOT** - Non Power of Two
+**DCC** - Digital content creation. A term commonly used to refer to generic 3D applications, such as 3dsMax, Blender, Maya etc.
     
 ## Installation
 This addon is available as an **official** [Blender extension](https://extensions.blender.org/about/). ![](Documentation/Images/doc_install_03.jpg)
@@ -192,6 +193,8 @@ To achieve this, we can **create a UV map** where **each vertex stores a UV coor
 
 ## III. Tech Art Compendium
 
+This compendium focuses on topics relevant to this *Blender* addon, primarily addressing **side effects and important considerations when using vertex offsets and storing data in UVs and Vertex Colors**. It may be worth reading, whether you use this addon or not.
+
 ### III.1 Collisions
 
 Applying any kind of vertex movement or offset in a **vertex shader occurs on the GPU**, near the end of the rendering pipeline, and the **CPU is completely unaware of this step**.
@@ -246,7 +249,7 @@ In most game engines, for performance purposes and to save memory, **UVs are sto
 
 This is not my area of expertise, but vertex shaders are typically supported in ray-tracing implementations. Some options might need to be enabled, as this feature may not be enabled by default due to the increased cost. In Unreal Engine, this used to be exposed through the ‘Evaluate World Position Offset’ option at one point. However, I’m not up-to-date and can't guarantee that this is still the case.
 
-### III.8 UV map count & cost
+### III.8 UV map cost & count
 
 There are many misconceptions about the **cost of UV maps**, with some claiming that each additional UV map induces an extra draw call. This is simply **not true**.
 
@@ -258,4 +261,29 @@ While an increased memory footprint does have some impact on memory bandwidth so
 
 > [!IMPORTANT]
 > In most game engines, including *Unreal Engine*, there’s a hard limit on the number of UV maps: 8 for static meshes and 4 for skeletal meshes.
+
+### III.9 Unique vertex attributes
+
+A vertex can only have **one attribute of a given type**:
+  - One position
+  - One normal
+  - One RGBA vertex color
+  - One UV coordinate per UV map
+
+What does this mean for UV seams? A vertex might have *two UV coordinates in a single UV map*.
+
+In simple terms, the **mesh will be cut**, and these **vertices will be duplicated** so that one set of vertices has one UV coordinate, and the other set has the other UV coordinate.
+
+This can easily be proven. When exporting two cylinders to Unreal Engine, one with *no UV map* and the other with a UV map containing a *single seam*, the latter contains two extra vertices for the seam.
+
+This **principle applies to all vertex attributes**, such as *normals*. To create a hard edge or, more broadly, to create flat faces, vertices must be duplicated so that some have their normals pointing in one direction, and others have their normals pointing in another direction.
+
+Again, this can be easily demonstrated. When exporting two spheres to Unreal Engine, one with *smooth shading* and the other with *flat shading*, the latter contains a significantly higher number of vertices, simply because each face duplicates all its vertices so they can have unique normals.
+
+The same principle applies to vertex colors. For a face to have a vertex color different from an adjacent face, the mesh must be cut, and the connected vertices must be duplicated so that some store one color, while the rest store another color.
+
+This results in an increased vertex count that can be predicted and confirmed in any game engine.
+
+> [!NOTE]
+> This concept may cause confusion for new artists and tech artists, mainly because a DCC software tries its best to hide this process for a better user experience. However, this still happens under the hood in all DCC softwares, and it is certainly true for all game engines as well. When in doubt, if you’re using UVs or Vertex Colors to store arbitrary data or manipulating normals in an unusual way, just ask yourself if the data is per face or per vertex. Most of the time, it will be per vertex, with UV seams and hard edges being the most notable exception.
 
