@@ -184,3 +184,52 @@ To achieve this, we can **create a UV map** where **each vertex stores a UV coor
 
 > [!NOTE]
 > The position's X and Y components might exceed the [0:1] range, and could even be negative, but that's perfectly fine. Staying within the unit range is only somewhat relevant when using UVs to sample a texture. The GPU might wrap or clamp the coordinates, which would alter how the texture is sampled. However, UVs are typically 16-bit floats in most game engines, and can even be 32-bit floats if needed. This means UVs are perfectly suited to store any arbitrary number, floating point precision issues aside.
+
+
+
+## III. Tech Art Compendium
+
+### III.1 COLLISIONS
+
+Applying any kind of vertex movement or offset in a **vertex shader occurs on the GPU**, near the end of the rendering pipeline, and the **CPU is completely unaware of this step**.
+
+As a result, *collisions still occur as if the vertices aren't moving*, based on the original collision primitives you may have set up in your game engine, or the mesh's triangles, *as if no vertex shader was applied to it*.
+
+> [!NOTE]
+> There's no way around it. Some game engines might expose settings to bake a fixed vertex offset into some kind of collision data, like Unreal Engine's landscape that may account for the landscape's material WPO, but it's extremely limited and it is best assumed that collisions and vertex animation don't go hand in hand, period.
+
+### III.2 BOUNDS
+
+Bounds are used by the CPU to determine if a mesh is in view and should be rendered and, similarly to collisions, **bounds are precomputed** based on the static mesh's raw vertex data.
+
+As a result, a mesh that **may appear to be in view** based on its precomputed bounds **might no longer be in view once its vertices are displaced on the GPU** by a vertex shader. Conversely, a mesh that **isn’t in view** and is therefore **occluded** might actually be **in view after its vertices are displaced on the GPU** by a vertex shader, but by that point, it’s **already been culled**. So, you can effectively make objects disappear!
+
+You get the idea, this widely used, bounds-based, occlusion process doesn’t work well with vertex animation and vertex offsets. Unfortunately, there’s no magic solution to this issue, except to **arbitrarily increase the mesh’s bounds by a certain amount to account for vertex animation or the maximum expected offset**.
+
+> [!NOTE]
+> Increasing bounds will reduce the chances of the mesh being culled, essentially leading to a performance impact, as the mesh will likely be rendered more often due to its increased *apparent overall size*. The impact is hard to quantify and depends on the specific mesh and scene.
+
+### III.3 DISTANCE FIELDS
+
+Still on the topic of precomputed data: distance fields. They somewhat recently have become quite popular and are now widely used in almost all game engines. A distance field is essentially a **3D volume encapsulating a mesh**, where **each voxel encodes the distance to the nearest surface of the mesh**, negative if inside it. With this data, and using a few derivative tricks, the *direction to the nearest surface can be deduced*. Together with the distance, this allows the *nearest position on the mesh to be found from any location within the 3D volume*.
+
+However, finding the distance to the nearest surface of the mesh for each voxel can be quite a taxing process for the CPU and/or GPU, which is why **distance fields are**, in most game engines, **precomputed** based on the mesh’s raw vertex data. As a result, no vertex animation or offset is taken into account, which can **mess up lighting, shadows**, and any other rendering feature that relies on distance fields in one way or another. A mesh may be animated on the GPU using a vertex shader, but its distance field will remain fixed.
+
+> [!NOTE]
+> Similar to bounds, there’s no magic solution to this, and the one "hack" typically exposed in game engines like Unreal Engine is the ability to offset the distance field self-shadowing distance. Unfortunately, this doesn’t offer much flexibility.
+
+Moving vertices on the GPU isn’t really compatible with techniques that rely on precomputed data, that’s just how things are.
+
+### III.4 VIRTUALIZED GEOMETRY (NANITE & VSM)
+
+**Nanite** and similar **virtualized geometry** techniques **don’t work well with vertex animations and offsets** for reasons that are well beyond the scope of this documentation.
+
+The same goes for **virtual shadow maps**, which are, at their core, a **caching technique**. And just like with any caching technique, you’re not supposed to trash the cache every frame just because a few vertices have moved. You can, but you’ll likely incur a very high cost.
+
+> [!NOTE]
+> I’m not up to date with the solutions currently offered in Unreal Engine to alleviate these issues, and I’d imagine it's a similar situation in other engines implementing similar technologies. Unfortunately, offsetting vertices on the GPU doesn’t work well with these new technologies; that's just the reality of the situation. It doesn’t mean it’s impossible, but you’ll need to dig deep and find the tricks that work best for your specific use case (e.g. it’s possible to tell Nanite a maximum offset per material)
+
+### III.5 Lightmap UV
+
+Good old lightmaps require unique UV layouts, and in game engines where using lightmaps is common practice, or at least was, like *Unreal Engine*, it’s typical to see lightmap UVs automatically generated upon mesh import. This assumption can interfere with your setup and override any additional UV map you've used to store pivots, etc. Always double-check that such options don’t get in your way.
+
