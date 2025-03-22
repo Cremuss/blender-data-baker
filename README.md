@@ -262,9 +262,15 @@ A vertex can only have **one attribute of a given type**:
 
 What does this mean for UV seams? A vertex might have *two UV coordinates in a single UV map*.
 
+![img](Documentation/Images/single_vert_attr_1.jpg)
+
 In simple terms, the **mesh will be cut**, and these **vertices will be duplicated** so that one set of vertices has one UV coordinate, and the other set has the other UV coordinate.
 
+![img](Documentation/Images/single_vert_attr_2.jpg)
+
 This can easily be proven. When exporting two cylinders to Unreal Engine, one with *no UV map* and the other with a UV map containing a *single seam*, the latter contains two extra vertices for the seam.
+
+![img](Documentation/Images/single_vert_attr_3.jpg)
 
 This **principle applies to all vertex attributes**, such as *normals*. To create a hard edge or, more broadly, to create flat faces, vertices must be duplicated so that some have their normals pointing in one direction, and others have their normals pointing in another direction.
 
