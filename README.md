@@ -51,6 +51,7 @@ This addon packs several **professional-grade techniques** commonly used in the 
 - **PBR** - Physically based rendering
 - **DXT** - A group of lossy texture compression algorithms (sometimes also called DXTn, DXTC, or BCn)
 - **Texel** - Texture element, or texture pixel. The fundamental unit of a texture map
+- **HDR** - High dynamic range. Usually refers to 16-bit float or 32-bit float when speaking of textures.
     
 # Installation
 This addon is available as an **official** [Blender extension](https://extensions.blender.org/about/). ![](Documentation/Images/doc_install_03.jpg)
@@ -645,3 +646,8 @@ Such a vector could then be used to modulate the grass wind motion based on the 
 
 ### Compendium - Packing - Pivot Painter
 
+**Pivot Painter 2** uses a special algorithm to **store the indices of individual mesh elements in a 16-bit float HDR texture**. These elements can be numerous, and thus indices may reach into the thousands or even *tens of thousands*. Such a range of *integers cannot be accurately represented with a 16-bit float*. Moreover, storing these indices in a 32-bit float *HDR* texture would raise memory usage concerns.
+
+The solution is to **store a 16-bit integer within the bits of a 16-bit float**. One might think that you could simply tell the GPU to store the 16-bit integer in the 16-bit float using the ```asfloat(int_index)``` HLSL method, and then convert it back with ```asint(float_index)```, but this overlooks an important detail.
+
+Sampling a 16-bit float *HDR* texture in *Unreal Engine* induces a 32-bit float conversion, scrambling the bits and making the asfloat() and asint() methods unusable. Therefore, a special algorithm must be used to 'split' the integer bits and distribute them across the sign, exponent, and mantissa components of the 16-bit float in a way that survives the 16-bit to 32-bit conversion.
