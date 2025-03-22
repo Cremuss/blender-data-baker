@@ -3,18 +3,44 @@
 
 This addon packs several **professional-grade techniques** commonly used in the **video game industry**: *Vertex Animation Textures, Bone Animation Textures, Object Animation Textures, Pivot Painter 2.0, UV Pivots* and more.
 
-## Summary
+# Summary
 
 - [Installation](#installation)
 - [Documentation](#documentation)
-  - [I VAT - Vertex Animation Textures Baker](#i.-vat---vertex-animation-textures-baker)
-    - [I.I VAT - Intro](#i1-vat---theory)
-    - [I.I VAT - Animation](#i2-vat---animation)
-    - [I.I VAT - Mesh Sequence](#i3-vat---mesh-sequence)
-  - [II Data - UV VCol Data Baker](#ii-data---uv-vcol-data-baker)
-    - [II.I Data - Intro](#ii1-data---intro)
+  - [VAT - Vertex Animation Textures Baker](#vat---vertex-animation-textures-baker)
+    - [VAT - Intro](#vat---theory)
+    - [VAT - Animation](#vat---animation)
+    - [VAT - Mesh Sequence](#vat---mesh-sequence)
+  - [OAT - Object Animation Textures Baker](#oat---object-animation-textures-baker)
+    - [OAT - Theory](#oat---theory)
+  - [BAT - Bone Animation Textures Baker](#bat---bone-animation-textures-baker)
+    - [BAT - Theory](#bat---theory)
+  - [Pivot Painter](#pivot-painter)
+    - [Painter Painter - Theory](#pivot-painter---theory)
+  - [Data - Data Baker](#data---data-baker)
+    - [Data - Intro](#data---intro)
+  - [Tech Art Compendium](#tech-art-compendium)
+    - [Compendium - Unique vertex attributes](#compendium---unique-vertex-attributes)
+    - [Compendium - UV map cost and count](#compendium---uv-map-cost-and-count)
+    - [Compendium -  UV Precision](#compendium---uv-precision)
+    - [Compendium -  Lightmap UV](#compendium---lightmap-uv)
+    - [Compendium -  Collisions](#compendium---collisions)
+    - [Compendium -  Bounds](#compendium---bounds)
+    - [Compendium -  Distance Fields](#compendium---distance-fields)
+    - [Compendium -  Virtualized Rendering Systems (Nanite & VSM)](#compendium---virtualized-render-systems-nanite-&-vsm)
+    - [Compendium -  Raytracing](#compendium---raytracing)
+    - [Compendium -  Texture compression settings, interpolation & nearest sampling](#compendium---texture-compression-settings,-interpolation-&-nearest-sampling)
+    - [Compendium - Fixing Normals](#compendium---fixing-normals)
+    - [Compendium - NPOT Textures](#compendium---npot-textures)
+    - [Compendium - Remapping](#compendium---remapping)
+    - [Compendium - Packing](#compendium---packing)
+    - [Compendium - Packing - Integer/Fraction](#compendium---packing-integer-fraction)
+    - [Compendium - Packing- Three floats into one](#compendium---packing-three-floats-into-one)
+    - [Compendium - Packing- Two floats into one](#compendium---packing-two-floats-into-one)
+    - [Compendium - Packing- Pivot Painter](#compendium---packing-pivot-painter)
 
-## Glossary
+
+# Glossary
 
 - **VAT** - The process of baking vertex data into textures AND the resulting texture(s)
 - **BAT** - The process of baking bone data into textures AND the resulting texture(s)
@@ -26,7 +52,7 @@ This addon packs several **professional-grade techniques** commonly used in the 
 - **DXT** - A group of lossy texture compression algorithms (sometimes also called DXTn, DXTC, or BCn)
 - **Texel** - Texture element, or texture pixel. The fundamental unit of a texture map
     
-## Installation
+# Installation
 This addon is available as an **official** [Blender extension](https://extensions.blender.org/about/). ![](Documentation/Images/doc_install_03.jpg)
 
 If this isn't an option, you could still first download a **ZIP** of this git repo.
@@ -35,15 +61,15 @@ If this isn't an option, you could still first download a **ZIP** of this git re
 Then, open the **Edit>Preferences** window, go to the **Get Extensions** tab and search for **Install from Disk** in the dropdown menu located at the very top-right.
 ![](Documentation/Images/doc_install_04.jpg)
 
-## Documentation
+# Documentation
 
-## I. VAT - Vertex Animation Textures Baker
+## VAT - Vertex Animation Textures Baker
 
 **Vertex Animation Texture** (VAT) is one of the simplest technique for **baking skeletal animation(s)** (or any animation) **into textures** by encoding data per vertex, per frame, in pixels. These textures are then sampled in a **vertex shader** to **play the animation** on a **static mesh**.
 
 This can lead to significant performance gains, as rendering skeletal meshes is typically the most expensive way to render animated meshes. By using static meshes, you can leverage instancing and particles to efficiently render crowds, etc. However, this technique also has its own pros and cons, which we'll discuss in the following sections.
 
-### I.1. VAT - Theory
+### VAT - Theory
 
 For **each frame and vertex**, an **XYZ offset** is stored in the **RGB channels** of a **unique pixel** in a texture. That vertex offset indicates how much the vertex has moved from the rest pose, at that frame.
 
@@ -67,7 +93,7 @@ Playing the animation in the vertex shader thus simply involves *manipulating th
 
 ![img](Documentation/Images/)
 
-### I.2. VAT - Packing, Interpolation, Padding, Resolution
+### VAT - Packing, Interpolation, Padding, Resolution
 
 The simplest way data can be stored in a VAT is using a **one-frame-per-row** packing scheme. Let's consider baking a skeletal mesh made of **400 vertices** and having **200 frames** of animation. The resulting **VAT resolution** would be **400x200**: 200 rows (frames) of 400 pixels (vertices). In other words, the VAT texture would contain the data of every vertex for every frame, one frame stacked on top of each other.
 
@@ -148,11 +174,43 @@ This packing method simply stores one frame after the other and leaves no empty 
 
 This requires a more complex algorithm to generate the UVs for sampling the VATs, and is considered experimental as it still needs thorough testing to ensure it doesn’t encounter precision issues with a high frame count. On paper, this **continuous** packing method promises to maximize the VAT's resolution and allows data to be tightly packed in POT textures, ensuring wide hardware support.
 
-## II. Data - UV VCol Data Baker
+## OAT - Object Animation Textures Baker
+
+**Object animation texture** (OAT) is a process almost identical to **vertex animation texture** (VAT). However, it makes *one assumption* that opens the door to a whole new way of thinking: **vertices that are part of the same object all move similarly**.
+
+### OAT - Theory
+
+Instead of baking the offset and normal data for each vertex at every frame, which would result in a *lot of duplicated data if this assumption holds true*, **the position of the object itself is baked instead**. All vertices that are part of the same mesh point to the same texel, and similar UV scrolling techniques as VATs can be used to play the object animation. This, of course, supports multiple objects, just as VATs support multiple vertices.
+
+Furthermore, the **object’s orientation** is baked along with its position. Therefore, the vertices can be translated to follow the object’s initial trajectory, while also being rotated around the object’s position to play the object’s rotation. This involves baking a *quaternion*, which can be packed into a single float using the '*[smallest three](#compendium)*' packing method. As a result, a single, very low-resolution 32-bit RGBA *HDR* texture can be used to store the object’s position in the RGB channels and its orientation in the alpha channel, making it an extremely efficient method for playing vertex animation at the object level. Scaling can also be baked and applied in the vertex shader.
+
+## BAT - Bone Animation Textures Baker
+
+**Bone animation texture** (BAT) is a more recent and, quite frankly, somewhat obscure technique compared to **vertex animation texture** (VAT). *VAT* is highly versatile because it simply store vertex offset and normal data, making it *agnostic to the underlying animation technique*. The baked animation can come from a mesh animated and deformed using a skeleton/armature, shape keys/morph targets, modifiers, keyframes, etc. As long as the topology and vertex order remain unchanged during the animation, *VAT* allow for a 1:1, non-destructive baking process.
+
+**Bone animation texture**, on the other hand, is **specific to baking skeletal animations** and is often *destructive*. While *BAT* may seem less appealing than *VAT*, it has significant advantages, such as much lower texture resolutions and consequently, a smaller memory footprint. In fact, the texture resolution is no longer determined by *vertex count*, but by **bone count**, making it much more efficient for animating static meshes with lots of vertices.
+
+### BAT - Theory
+
+A special UV map is again used to **assign each vertex a unique texel in an RGBA texture**. This **texture encodes the bone index and bone weight** to which the vertex is parented. Up to *four bones* can be encoded per vertex, one per channel in the texture. This replicates the vertex skinning data from the DCC software.
+
+By sampling this texture, the **bone index** can be extracted to sample the bone animation texture at the correct row of texels for that specific vertex, retrieving the bone pivot and orientation at the desired frame.
+
+For optimal performance, you may choose to sample only one bone in the vertex shader. However, this will likely result in a *lossy bake*. In this case, vertices would only be ‘*parented*’ to a *single bone* and *fully inherit its transform*, which is typically not the desired result. Organic skinning often requires a vertex to inherit the transforms of multiple bones to varying degrees.
+
+This is why the **bone weight** is also extracted to determine how much the vertex will inherit the bone’s translation and rotation, replicating the initial vertex skinning. The process can then be repeated to sample the index and weight of the *second, third, and potentially fourth bone* the vertex is '*parented*' to. The sum of the bone weights should equal 1.0 to ensure the vertex fully moves.
+
+Since we’re working with pivot and rotation, the *vertex normal can also be rotated*, eliminating the need to store normal data per vertex. Applying bone scale is technically possible but is not typically implemented, as scaling bones in game engines is generally *avoided* for various technical reasons. Therefore, supporting bone scale is quite rare, if ever needed at all.
+
+## Pivot Painter
+
+### Pivot Painter - Theory
+
+## Data - Data Baker
 
 The Data Baker tool aims to **facilitate and automate** the process of **baking arbitrary data into vertex color and UVs**.
 
-### II.I. Data - Theory
+### Data - Theory
 
 The concept of **baking data into UVs and Vertex Colors** is likely as old as real-time rendering itself.
 
@@ -183,11 +241,11 @@ Once the mesh is exported into a game engine, that extra UV map can be accessed 
 
 An additional UV map could be used to store the pivot's Z component and the XYZ pivot position could then be reconstructed in the vertex shader like so.
 
-## III. Tech Art Compendium
+## Tech Art Compendium
 
 This compendium focuses on topics relevant to this *Blender* addon, primarily addressing **side effects and important considerations when using vertex offsets and storing data in UVs and Vertex Colors**. It may be worth reading, whether you use this addon or not.
 
-### III.1 Unique vertex attributes
+### Compendium - Unique vertex attributes
 
 A vertex can only have **one attribute of a given type**:
   - One position
@@ -212,7 +270,7 @@ This results in an increased vertex count that can be predicted and confirmed in
 > [!NOTE]
 > This concept may cause confusion for new artists and tech artists, mainly because a DCC software tries its best to hide this process for a better user experience. However, this still happens under the hood in all DCC softwares, and it is certainly true for all game engines as well. When in doubt, if you’re using UVs or Vertex Colors to store arbitrary data or manipulating normals in an unusual way, just ask yourself if the data is per face or per vertex. Most of the time, it will be per vertex, with UV seams and hard edges being the most notable exception.
 
-### III.2 UV map cost & count
+### Compendium - UV map cost and count
 
 There are many misconceptions about the **cost of UV maps**, with some claiming that each additional UV map induces an extra draw call. This is simply **not true**.
 
@@ -225,13 +283,13 @@ While an increased memory footprint does have some impact on memory bandwidth so
 > [!WARNING]
 > In most game engines, including *Unreal Engine*, there’s a hard limit on the number of UV maps: 8 for static meshes and 4 for skeletal meshes.
 
-### III.3 UV Precision
+### Compendium - UV Precision
 
 In most game engines, for performance purposes and to save memory, **UVs are stored as 16-bit floats**.
 
 16-bit floats provide *sufficient precision for everyday tasks*, such as sampling 4K textures, and allow for positive and negative values across a wide range. However, when storing arbitrary data in UVs, 16 bits may not provide enough precision (this is discussed in greater details [further down below](#compendium). In such cases, 32-bit UVs can be enabled in most game engines. In *Unreal Engine*, this is exposed through the '*full precision UVs*' option in the static mesh editor.
 
-### III.4 Lightmap UV
+### Compendium - Lightmap UV
 
 Good old lightmaps require unique UV layouts, and in game engines where using lightmaps is common practice, or at least was, like *Unreal Engine*, it’s typical to see lightmap UVs automatically generated upon mesh import. This assumption can interfere with your setup and override any additional UV map you've used to store pivots, etc. Always double-check that such options don’t get in your way.
 
@@ -244,7 +302,7 @@ As a result, *collisions*, which are typically *solved on the CPU* except in a f
 > [!NOTE]
 > There's no way around it. Some game engines might expose settings to bake a fixed vertex offset into some kind of collision data, like *Unreal Engine*'s landscape that may account for the landscape's material WPO, but it's extremely limited and it is best assumed that collisions and vertex animation don't go hand in hand, period.
 
-### III.6 Bounds
+### Compendium - Bounds
 
 Bounds are used by the CPU to determine if a mesh is in view and thus, if it should be rendered. Similarly to collisions, **bounds are precomputed** based on the static mesh's raw vertex data.
 
@@ -255,7 +313,7 @@ You get the idea, this widely used, bounds-based, occlusion process doesn’t wo
 > [!NOTE]
 > Increasing bounds will reduce the chances of the mesh being culled, essentially leading to a performance impact, as the mesh will likely be rendered more often due to its increased *apparent overall size*. The impact is hard to quantify and depends on the specific mesh and scene.
 
-### III.7 Distance Fields
+### Compendium - Distance Fields
 
 Still on the topic of precomputed data: distance fields. They have become quite popular and are now widely used in almost all game engines.
 
@@ -266,7 +324,7 @@ However, computing the distance to the nearest surface of the mesh for each voxe
 > [!NOTE]
 > Similar to bounds, there’s no magic solution to this, and the one "hack" typically exposed in game engines like *Unreal Engine* is the ability to offset the distance field self-shadowing distance. Unfortunately, this doesn’t offer much flexibility. Moving vertices on the GPU isn’t really compatible with techniques that rely on precomputed data, that’s just how things are.
 
-### III.8 Virtualized Rendering Systems (Nanite & VSM)
+### Compendium - Virtualized Rendering Systems (Nanite & VSM)
 
 **Nanite** and similar **virtualized geometry** techniques **don’t work well with vertex animations and offsets** for reasons that are well beyond the scope of this documentation.
 
@@ -275,11 +333,11 @@ The same goes for **virtual shadow maps**, which are, at their core, a **caching
 > [!NOTE]
 > I’m not up to date with the solutions currently offered in *Unreal Engine* to alleviate these issues, and I’d imagine it's a similar situation in other engines implementing similar technologies. Unfortunately, offsetting vertices on the GPU doesn’t work well with these new technologies; that's just the reality of the situation. It doesn’t mean it’s impossible, but you’ll need to dig deep and find the tricks that work best for your specific use case (e.g. it’s possible to tell Nanite a maximum offset per material, tweak the VSM invalidation cache behavior per asset etc.)
 
-### III.9 Raytracing
+### Compendium - Raytracing
 
 This is not my area of expertise, but vertex shaders are typically supported in ray-tracing implementations. Some options might need to be enabled, as this feature may not be enabled by default due to the increased cost. In Unreal Engine, this used to be exposed through the ‘Evaluate World Position Offset’ option at one point. However, I’m not up-to-date and can't guarantee that this is still the case.
 
-### III.10 Texture compression settings, interpolation & nearest sampling
+### Compendium - Texture compression settings, interpolation & nearest sampling
 
 When using textures to store arbitrary data, it’s important to understand not only how the **data can be stored and compressed** but also how it is **sampled**.
 
@@ -340,11 +398,11 @@ Long story short, when rotations are involved, normals can be fixed, but they ca
 > [!NOTE]
 > DDX/DDY can be used in *pixel shaders* to derive *flat normals* from the surface position but it results in a faceted look that is most often undesired.
 
-### Sampling VAT Normal
+### Compendium - Sampling VAT Normal
 
 interpolation issue!
 
-### NPOT Textures
+### Compendium - NPOT Textures
 
 While non-power-of-two textures *were once not even considerable* in most game engines, the *situation has greatly improved* but there are still some important things to note. It’s very hard to find information on what happens under the hood in older and more recent GPUs and coming with absolute truths on such a broad and obscure topic is unwise.
 
@@ -358,7 +416,7 @@ NPOT textures can also cause problems with **mipmapping** and **most compression
 
 In short, **NPOT should work fine for most use cases in 2025**. This isn’t an absolute truth, of course, so don’t take my word for it. 
 
-# Remapping
+### Compendium - Remapping
 
 Storing data in a texture, UVs, or Vertex Colors requires an understanding of the **format** you're working with.
 
@@ -419,7 +477,7 @@ The '*maxpos*' is therefore a value to both compute ahead of time and keep aroun
 > [!IMPORTANT]
 > The same exact principles apply to Vertex Colors, which can be used to store a unit vector, like a normal, or an offset or position with the same exact constraints. Since Vertex Colors are typically stored as 8-bit integers, you will face similar limitations in terms of range and precision. When storing a unit vector or other data, the values will need to be remapped from their original range (e.g. [-1:1]) to fit within the 8-bit integer range of [0:255]. The remapping process will result in a loss of precision, and care must be taken when using Vertex Colors to store data like positions or offsets.
 
-# PACKING
+### Compendium - Packing
 
 Storing data in UVs, Vertex Colors, or Textures brings up an interesting topic called **bit-packing**. Bit-packing can be thought of as the process of storing more data than what’s typically possible in a given format, like a 32-bit float, by using some kind of **packing and unpacking algorithm**. This usually **involves some precision loss**, as you can’t expect to, say, pack two 32-bit floats into one and maintain the same level of precision.
 
@@ -427,7 +485,7 @@ That said, some algorithms are extremely clever, like the "*smallest three*" met
 
 Pivot Painter 2.0 also famously uses a complex bit-packing algorithm to encode a 16-bit integer into a 16-bit float in such a way that it survives the 16-to-32-bit float conversion, which is also discussed in more detail in a later section.
 
-## Packing - Integer/Fraction
+#### Compendium - Packing - Integer/Fraction
 
 A simple packing method involves using the **integer part** of a 32-bit float to store the first piece of data, and using its **fractional part** to store the second.
 
@@ -471,7 +529,7 @@ y = frac(432.564) = 0.564
 > [!NOTE]
 > Minimal precision loss can be expected.
 
-## Packing - Three floats into one
+#### Compendium - Packing - Three floats into one
 
 Another simple packing method involves scaling three 32-bit floats (x,y,z) to fit them into one 32-bit float (w). This method is quite rudimentary and results in severe precision loss, making it impractical for packing anything other than unit vectors.
 
@@ -517,7 +575,7 @@ z = (347.702*10 - floor(347.702*10)) = 0.019999
 
 As you can see, the unpacked values deviate quite a bit from the packed values. This is the result of bit-packing, and the precision loss may be acceptable for some use cases.
 
-## Packing - Two floats into one
+#### Compendium - Packing - Two floats into one
 
 Similarly, a different packing method can be used to pack two 32-bit floats (x,y) into a single 32-bit float (w) with less precision loss.
 
@@ -562,4 +620,6 @@ The unpacked values are still slightly different from the original values but de
 These packing methods can be extremely useful when storing data in various media, especially UVs, as the number of UV maps is limited and extra UV maps consume precious memory. For instance, the forward vector's XY components of grass blades could be packed and unpacked almost for free along their XY pivots, assuming they are stored in centimeters and you don't mind a one-centimeter precision loss.
 
 Such a vector could then be used to modulate the grass wind motion based on the wind direction and the way the grass blades face.
+
+#### Compendium - Packing - Pivot Painter
 
