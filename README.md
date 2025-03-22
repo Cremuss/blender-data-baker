@@ -652,9 +652,9 @@ The solution is to **store a 16-bit integer within the bits of a 16-bit float**.
 
 Sampling a 16-bit float *HDR* texture in *Unreal Engine* induces a 32-bit float conversion, scrambling the bits and making the asfloat() and asint() methods unusable. Therefore, a special algorithm must be used to 'split' the integer bits and distribute them across the sign, exponent, and mantissa components of the 16-bit float in a way that survives the 16-bit to 32-bit conversion.
 
-Here's the documented packing algorithm: [HLSL](#Documentation/pivot_painter_pack.hlsl)
+Here's the documented packing algorithm: [HLSL](Documentation/pivot_painter_pack.hlsl) 
 
-And here's the documented unpacking algorithm: [HLSL](#Documentation/pivot_painter_unpack.hlsl)
+And here's the documented unpacking algorithm: [HLSL](Documentation/pivot_painter_unpack.hlsl)
 
 > [!NOTE]
 > This may seem complex and costly, but it's not. The packing is only applied during the baking process, offline, and the unpacking, computed in the vertex shader, involves just a couple of bitwise operations—the fastest operations. The cost is well buried under the cost of the GPU having to wait for the dependent texture fetches anyway, more on that below.
