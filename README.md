@@ -20,25 +20,25 @@ This addon packs several **professional-grade techniques** commonly used in the 
     - [Painter Painter - Theory](#pivot-painter---theory)
   - [Data - Data Baker](#data---data-baker)
     - [Data - Theory](#data---theory)
-  - [Tech Art Compendium](#tech-art-compendium)
-    - [Compendium - Unique vertex attributes](#compendium---unique-vertex-attributes)
-    - [Compendium - UV map cost and count](#compendium---uv-map-cost-and-count)
-    - [Compendium - UV Precision](#compendium---uv-precision)
-    - [Compendium - Lightmap UV](#compendium---lightmap-uv)
-    - [Compendium - Collisions](#compendium---collisions)
-    - [Compendium - Bounds](#compendium---bounds)
-    - [Compendium - Distance Fields](#compendium---distance-fields)
-    - [Compendium - Virtualized Rendering Systems (Nanite & VSM)](#compendium---virtualized-rendering-systems-nanite--vsm)
-    - [Compendium - Raytracing](#compendium---raytracing)
-    - [Compendium - Texture compression settings, interpolation & nearest sampling](#compendium---texture-compression-settings-interpolation--nearest-sampling)
-    - [Compendium - Fixing Normals](#compendium---fixing-normals)
-    - [Compendium - NPOT Textures](#compendium---npot-textures)
-    - [Compendium - Remapping](#compendium---remapping)
-    - [Compendium - Packing](#compendium---packing)
-    - [Compendium - Packing - Integer/Fraction](#compendium---packing---integerfraction)
-    - [Compendium - Packing- Three floats into one](#compendium---packing---three-floats-into-one)
-    - [Compendium - Packing- Two floats into one](#compendium---packing---two-floats-into-one)
-    - [Compendium - Packing- Pivot Painter](#compendium---packing---pivot-painter)
+- [Tech Art Compendium](#tech-art-compendium)
+  - [Compendium - Unique vertex attributes](#compendium---unique-vertex-attributes)
+  - [Compendium - UV map cost and count](#compendium---uv-map-cost-and-count)
+  - [Compendium - UV Precision](#compendium---uv-precision)
+  - [Compendium - Lightmap UV](#compendium---lightmap-uv)
+  - [Compendium - Collisions](#compendium---collisions)
+  - [Compendium - Bounds](#compendium---bounds)
+  - [Compendium - Distance Fields](#compendium---distance-fields)
+  - [Compendium - Virtualized Rendering Systems (Nanite & VSM)](#compendium---virtualized-rendering-systems-nanite--vsm)
+  - [Compendium - Raytracing](#compendium---raytracing)
+  - [Compendium - Texture compression settings, interpolation & nearest sampling](#compendium---texture-compression-settings-interpolation--nearest-sampling)
+  - [Compendium - Fixing Normals](#compendium---fixing-normals)
+  - [Compendium - NPOT Textures](#compendium---npot-textures)
+  - [Compendium - Remapping](#compendium---remapping)
+  - [Compendium - Packing](#compendium---packing)
+  - [Compendium - Packing - Integer/Fraction](#compendium---packing---integerfraction)
+  - [Compendium - Packing- Three floats into one](#compendium---packing---three-floats-into-one)
+  - [Compendium - Packing- Two floats into one](#compendium---packing---two-floats-into-one)
+  - [Compendium - Packing- Pivot Painter](#compendium---packing---pivot-painter)
 
 # Glossary
 
@@ -241,11 +241,11 @@ Once the mesh is exported into a game engine, that extra UV map can be accessed 
 
 An additional UV map could be used to store the pivot's Z component and the XYZ pivot position could then be reconstructed in the vertex shader like so.
 
-## Tech Art Compendium
+# Tech Art Compendium
 
 This compendium focuses on topics relevant to this *Blender* addon, primarily addressing **side effects and important considerations when using vertex offsets and storing data in UVs and Vertex Colors**. It may be worth reading, whether you use this addon or not.
 
-### Compendium - Unique vertex attributes
+## Compendium - Unique vertex attributes
 
 A vertex can only have **one attribute of a given type**:
   - One position
@@ -270,7 +270,7 @@ This results in an increased vertex count that can be predicted and confirmed in
 > [!NOTE]
 > This concept may cause confusion for new artists and tech artists, mainly because a DCC software tries its best to hide this process for a better user experience. However, this still happens under the hood in all DCC softwares, and it is certainly true for all game engines as well. When in doubt, if you’re using UVs or Vertex Colors to store arbitrary data or manipulating normals in an unusual way, just ask yourself if the data is per face or per vertex. Most of the time, it will be per vertex, with UV seams and hard edges being the most notable exception.
 
-### Compendium - UV map cost and count
+## Compendium - UV map cost and count
 
 There are many misconceptions about the **cost of UV maps**, with some claiming that each additional UV map induces an extra draw call. This is simply **not true**.
 
@@ -283,17 +283,17 @@ While an increased memory footprint does have some impact on memory bandwidth so
 > [!WARNING]
 > In most game engines, including *Unreal Engine*, there’s a hard limit on the number of UV maps: 8 for static meshes and 4 for skeletal meshes.
 
-### Compendium - UV Precision
+## Compendium - UV Precision
 
 In most game engines, for performance purposes and to save memory, **UVs are stored as 16-bit floats**.
 
 16-bit floats provide *sufficient precision for everyday tasks*, such as sampling 4K textures, and allow for positive and negative values across a wide range. However, when storing arbitrary data in UVs, 16 bits may not provide enough precision (this is discussed in greater details [further down below](#compendium). In such cases, 32-bit UVs can be enabled in most game engines. In *Unreal Engine*, this is exposed through the '*full precision UVs*' option in the static mesh editor.
 
-### Compendium - Lightmap UV
+## Compendium - Lightmap UV
 
 Good old lightmaps require unique UV layouts, and in game engines where using lightmaps is common practice, or at least was, like *Unreal Engine*, it’s typical to see lightmap UVs automatically generated upon mesh import. This assumption can interfere with your setup and override any additional UV map you've used to store pivots, etc. Always double-check that such options don’t get in your way.
 
-### Compendium - Collisions
+## Compendium - Collisions
 
 Applying any kind of vertex movement or offset in a **vertex shader occurs on the GPU**, near the end of the rendering pipeline, and the **CPU is completely unaware of this step**.
 
@@ -302,7 +302,7 @@ As a result, *collisions*, which are typically *solved on the CPU* except in a f
 > [!NOTE]
 > There's no way around it. Some game engines might expose settings to bake a fixed vertex offset into some kind of collision data, like *Unreal Engine*'s landscape that may account for the landscape's material WPO, but it's extremely limited and it is best assumed that collisions and vertex animation don't go hand in hand, period.
 
-### Compendium - Bounds
+## Compendium - Bounds
 
 Bounds are used by the CPU to determine if a mesh is in view and thus, if it should be rendered. Similarly to collisions, **bounds are precomputed** based on the static mesh's raw vertex data.
 
@@ -313,7 +313,7 @@ You get the idea, this widely used, bounds-based, occlusion process doesn’t wo
 > [!NOTE]
 > Increasing bounds will reduce the chances of the mesh being culled, essentially leading to a performance impact, as the mesh will likely be rendered more often due to its increased *apparent overall size*. The impact is hard to quantify and depends on the specific mesh and scene.
 
-### Compendium - Distance Fields
+## Compendium - Distance Fields
 
 Still on the topic of precomputed data: distance fields. They have become quite popular and are now widely used in almost all game engines.
 
@@ -324,7 +324,7 @@ However, computing the distance to the nearest surface of the mesh for each voxe
 > [!NOTE]
 > Similar to bounds, there’s no magic solution to this, and the one "hack" typically exposed in game engines like *Unreal Engine* is the ability to offset the distance field self-shadowing distance. Unfortunately, this doesn’t offer much flexibility. Moving vertices on the GPU isn’t really compatible with techniques that rely on precomputed data, that’s just how things are.
 
-### Compendium - Virtualized Rendering Systems (Nanite & VSM)
+## Compendium - Virtualized Rendering Systems (Nanite & VSM)
 
 **Nanite** and similar **virtualized geometry** techniques **don’t work well with vertex animations and offsets** for reasons that are well beyond the scope of this documentation.
 
@@ -333,11 +333,11 @@ The same goes for **virtual shadow maps**, which are, at their core, a **caching
 > [!NOTE]
 > I’m not up to date with the solutions currently offered in *Unreal Engine* to alleviate these issues, and I’d imagine it's a similar situation in other engines implementing similar technologies. Unfortunately, offsetting vertices on the GPU doesn’t work well with these new technologies; that's just the reality of the situation. It doesn’t mean it’s impossible, but you’ll need to dig deep and find the tricks that work best for your specific use case (e.g. it’s possible to tell Nanite a maximum offset per material, tweak the VSM invalidation cache behavior per asset etc.)
 
-### Compendium - Raytracing
+## Compendium - Raytracing
 
 This is not my area of expertise, but vertex shaders are typically supported in ray-tracing implementations. Some options might need to be enabled, as this feature may not be enabled by default due to the increased cost. In Unreal Engine, this used to be exposed through the ‘Evaluate World Position Offset’ option at one point. However, I’m not up-to-date and can't guarantee that this is still the case.
 
-### Compendium - Texture compression settings, interpolation & nearest sampling
+## Compendium - Texture compression settings, interpolation & nearest sampling
 
 When using textures to store arbitrary data, it’s important to understand not only how the **data can be stored and compressed** but also how it is **sampled**.
 
@@ -383,7 +383,7 @@ If this does occur, you might want to consider using both **Nearest sampling and
 
 To summarize, it’s not the higher texture resolution itself that causes precision issues. Rather, for VATs and similar techniques, the problem arises because vertices need to be dead-centered on texels, and as texture resolution increases, the texels become smaller, making imprecision issues more apparent.
 
-### Compendium - Fixing Normals
+## Compendium - Fixing Normals
 
 Offsetting vertices in a vertex shader does not update the normals, and for good reasons.
 
@@ -398,11 +398,11 @@ Long story short, when rotations are involved, normals can be fixed, but they ca
 > [!NOTE]
 > DDX/DDY can be used in *pixel shaders* to derive *flat normals* from the surface position but it results in a faceted look that is most often undesired.
 
-### Compendium - Sampling VAT Normal
+## Compendium - Sampling VAT Normal
 
 interpolation issue!
 
-### Compendium - NPOT Textures
+## Compendium - NPOT Textures
 
 While non-power-of-two textures *were once not even considerable* in most game engines, the *situation has greatly improved* but there are still some important things to note. It’s very hard to find information on what happens under the hood in older and more recent GPUs and coming with absolute truths on such a broad and obscure topic is unwise.
 
@@ -416,7 +416,7 @@ NPOT textures can also cause problems with **mipmapping** and **most compression
 
 In short, **NPOT should work fine for most use cases in 2025**. This isn’t an absolute truth, of course, so don’t take my word for it. 
 
-### Compendium - Remapping
+## Compendium - Remapping
 
 Storing data in a texture, UVs, or Vertex Colors requires an understanding of the **format** you're working with.
 
@@ -477,7 +477,7 @@ The '*maxpos*' is therefore a value to both compute ahead of time and keep aroun
 > [!IMPORTANT]
 > The same exact principles apply to Vertex Colors, which can be used to store a unit vector, like a normal, or an offset or position with the same exact constraints. Since Vertex Colors are typically stored as 8-bit integers, you will face similar limitations in terms of range and precision. When storing a unit vector or other data, the values will need to be remapped from their original range (e.g. [-1:1]) to fit within the 8-bit integer range of [0:255]. The remapping process will result in a loss of precision, and care must be taken when using Vertex Colors to store data like positions or offsets.
 
-### Compendium - Packing
+## Compendium - Packing
 
 Storing data in UVs, Vertex Colors, or Textures brings up an interesting topic called **bit-packing**. Bit-packing can be thought of as the process of storing more data than what’s typically possible in a given format, like a 32-bit float, by using some kind of **packing and unpacking algorithm**. This usually **involves some precision loss**, as you can’t expect to, say, pack two 32-bit floats into one and maintain the same level of precision.
 
@@ -485,7 +485,7 @@ That said, some algorithms are extremely clever, like the "*smallest three*" met
 
 Pivot Painter 2.0 also famously uses a complex bit-packing algorithm to encode a 16-bit integer into a 16-bit float in such a way that it survives the 16-to-32-bit float conversion, which is also discussed in more detail in a later section.
 
-#### Compendium - Packing - Integer/Fraction
+### Compendium - Packing - Integer/Fraction
 
 A simple packing method involves using the **integer part** of a 32-bit float to store the first piece of data, and using its **fractional part** to store the second.
 
@@ -529,7 +529,7 @@ y = frac(432.564) = 0.564
 > [!NOTE]
 > Minimal precision loss can be expected.
 
-#### Compendium - Packing - Three floats into one
+### Compendium - Packing - Three floats into one
 
 Another simple packing method involves scaling three 32-bit floats (x,y,z) to fit them into one 32-bit float (w). This method is quite rudimentary and results in severe precision loss, making it impractical for packing anything other than unit vectors.
 
@@ -575,7 +575,7 @@ z = (347.702*10 - floor(347.702*10)) = 0.019999
 
 As you can see, the unpacked values deviate quite a bit from the packed values. This is the result of bit-packing, and the precision loss may be acceptable for some use cases.
 
-#### Compendium - Packing - Two floats into one
+### Compendium - Packing - Two floats into one
 
 Similarly, a different packing method can be used to pack two 32-bit floats (x,y) into a single 32-bit float (w) with less precision loss.
 
@@ -621,5 +621,5 @@ These packing methods can be extremely useful when storing data in various media
 
 Such a vector could then be used to modulate the grass wind motion based on the wind direction and the way the grass blades face.
 
-#### Compendium - Packing - Pivot Painter
+### Compendium - Packing - Pivot Painter
 
