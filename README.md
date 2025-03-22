@@ -177,7 +177,9 @@ This requires a more complex algorithm to generate the UVs for sampling the VATs
 
 ### VAT - Documentation - Mesh Sequence
 
+The tool allows you to bake vertex animation textures using two different modes. The **first mode assumes that the vertex animation will be derived from a list of meshes**, with the frame count determined by the number of meshes. These meshes must be **exact duplicates, with the same topology**—meaning the same vertex count and vertex order. As long as this single constraint is met, the meshes can be *deformed using any technique you choose*.
 
+Thus, this technique only supports the baking of *a single mesh*, as selecting multiple objects will be used to construct the *mesh sequence*. **Object names** will be used to alphabetically *sort the meshes and order the frame list*.
 
 ### VAT - Documentation - Animation
 
