@@ -309,7 +309,7 @@ While an increased memory footprint does have some impact on memory bandwidth so
 
 In most game engines, for performance purposes and to save memory, **UVs are stored as 16-bit floats**.
 
-16-bit floats provide *sufficient precision for everyday tasks*, such as sampling 4K textures, and allow for positive and negative values across a wide range. However, when storing arbitrary data in UVs, 16 bits may not provide enough precision (this is discussed in greater details [further down below](#compendium). In such cases, 32-bit UVs can be enabled in most game engines. In *Unreal Engine*, this is exposed through the '*full precision UVs*' option in the static mesh editor.
+16-bit floats provide *sufficient precision for everyday tasks*, such as sampling 4K textures, and allow for positive and negative values across a wide range. However, when storing arbitrary data in UVs, 16 bits may not provide enough precision. This is discussed in greater details [further down below](#compendium). In such cases, 32-bit UVs can be enabled in most game engines. In *Unreal Engine*, this is exposed through the '*full precision UVs*' option in the static mesh editor.
 
 ## Compendium - Lightmap UV
 
