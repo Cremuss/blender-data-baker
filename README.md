@@ -8,7 +8,8 @@ This addon packs several **professional-grade techniques** commonly used in the 
 - [Installation](#installation)
 - [Documentation](#documentation)
   - [VAT - Vertex Animation Textures Baker](#vat---vertex-animation-textures-baker)
-    - [VAT - Intro](#vat---theory)
+    - [VAT - Theory](#vat---theory)
+    - [VAT - Packing, Interpolation, Padding & Resolution](#vat---packing-interpolation-padding-resolution)
     - [VAT - Animation](#vat---animation)
     - [VAT - Mesh Sequence](#vat---mesh-sequence)
   - [OAT - Object Animation Textures Baker](#oat---object-animation-textures-baker)
@@ -18,27 +19,26 @@ This addon packs several **professional-grade techniques** commonly used in the 
   - [Pivot Painter](#pivot-painter)
     - [Painter Painter - Theory](#pivot-painter---theory)
   - [Data - Data Baker](#data---data-baker)
-    - [Data - Intro](#data---intro)
+    - [Data - Theory](#data---theory)
   - [Tech Art Compendium](#tech-art-compendium)
     - [Compendium - Unique vertex attributes](#compendium---unique-vertex-attributes)
     - [Compendium - UV map cost and count](#compendium---uv-map-cost-and-count)
-    - [Compendium -  UV Precision](#compendium---uv-precision)
-    - [Compendium -  Lightmap UV](#compendium---lightmap-uv)
-    - [Compendium -  Collisions](#compendium---collisions)
-    - [Compendium -  Bounds](#compendium---bounds)
-    - [Compendium -  Distance Fields](#compendium---distance-fields)
-    - [Compendium -  Virtualized Rendering Systems (Nanite & VSM)](#compendium---virtualized-render-systems-nanite-&-vsm)
-    - [Compendium -  Raytracing](#compendium---raytracing)
-    - [Compendium -  Texture compression settings, interpolation & nearest sampling](#compendium---texture-compression-settings,-interpolation-&-nearest-sampling)
+    - [Compendium - UV Precision](#compendium---uv-precision)
+    - [Compendium - Lightmap UV](#compendium---lightmap-uv)
+    - [Compendium - Collisions](#compendium---collisions)
+    - [Compendium - Bounds](#compendium---bounds)
+    - [Compendium - Distance Fields](#compendium---distance-fields)
+    - [Compendium - Virtualized Rendering Systems (Nanite & VSM)](#compendium---virtualized-rendering-systems-nanite--vsm)
+    - [Compendium - Raytracing](#compendium---raytracing)
+    - [Compendium - Texture compression settings, interpolation & nearest sampling](#compendium---texture-compression-settings-interpolation--nearest-sampling)
     - [Compendium - Fixing Normals](#compendium---fixing-normals)
     - [Compendium - NPOT Textures](#compendium---npot-textures)
     - [Compendium - Remapping](#compendium---remapping)
     - [Compendium - Packing](#compendium---packing)
-    - [Compendium - Packing - Integer/Fraction](#compendium---packing-integer-fraction)
-    - [Compendium - Packing- Three floats into one](#compendium---packing-three-floats-into-one)
-    - [Compendium - Packing- Two floats into one](#compendium---packing-two-floats-into-one)
-    - [Compendium - Packing- Pivot Painter](#compendium---packing-pivot-painter)
-
+    - [Compendium - Packing - Integer/Fraction](#compendium---packing---integerfraction)
+    - [Compendium - Packing- Three floats into one](#compendium---packing---three-floats-into-one)
+    - [Compendium - Packing- Two floats into one](#compendium---packing---two-floats-into-one)
+    - [Compendium - Packing- Pivot Painter](#compendium---packing---pivot-painter)
 
 # Glossary
 
@@ -93,7 +93,7 @@ Playing the animation in the vertex shader thus simply involves *manipulating th
 
 ![img](Documentation/Images/)
 
-### VAT - Packing, Interpolation, Padding, Resolution
+### VAT - Packing, Interpolation, Padding & Resolution
 
 The simplest way data can be stored in a VAT is using a **one-frame-per-row** packing scheme. Let's consider baking a skeletal mesh made of **400 vertices** and having **200 frames** of animation. The resulting **VAT resolution** would be **400x200**: 200 rows (frames) of 400 pixels (vertices). In other words, the VAT texture would contain the data of every vertex for every frame, one frame stacked on top of each other.
 
@@ -186,7 +186,7 @@ Furthermore, the **object’s orientation** is baked along with its position. Th
 
 ## BAT - Bone Animation Textures Baker
 
-**Bone animation texture** (BAT) is a more recent and, quite frankly, somewhat obscure technique compared to **vertex animation texture** (VAT). *VAT* is highly versatile because it simply store vertex offset and normal data, making it *agnostic to the underlying animation technique*. The baked animation can come from a mesh animated and deformed using a skeleton/armature, shape keys/morph targets, modifiers, keyframes, etc. As long as the topology and vertex order remain unchanged during the animation, *VAT* allow for a 1:1, non-destructive baking process.
+**Bone animation texture** (BAT) is a more recent and, quite frankly, somewhat obscure technique compared to **vertex animation texture** (VAT). *VAT* is highly versatile because it simply stores vertex offset and normal data, making it *agnostic to the underlying animation technique*. The baked animation can come from a mesh animated and deformed using a skeleton/armature, shape keys/morph targets, modifiers, keyframes, etc. As long as the topology and vertex order remain unchanged during the animation, *VAT* allow for a 1:1, non-destructive baking process.
 
 **Bone animation texture**, on the other hand, is **specific to baking skeletal animations** and is often *destructive*. While *BAT* may seem less appealing than *VAT*, it has significant advantages, such as much lower texture resolutions and consequently, a smaller memory footprint. In fact, the texture resolution is no longer determined by *vertex count*, but by **bone count**, making it much more efficient for animating static meshes with lots of vertices.
 
@@ -293,7 +293,7 @@ In most game engines, for performance purposes and to save memory, **UVs are sto
 
 Good old lightmaps require unique UV layouts, and in game engines where using lightmaps is common practice, or at least was, like *Unreal Engine*, it’s typical to see lightmap UVs automatically generated upon mesh import. This assumption can interfere with your setup and override any additional UV map you've used to store pivots, etc. Always double-check that such options don’t get in your way.
 
-### III.5 Collisions
+### Compendium - Collisions
 
 Applying any kind of vertex movement or offset in a **vertex shader occurs on the GPU**, near the end of the rendering pipeline, and the **CPU is completely unaware of this step**.
 
@@ -383,7 +383,7 @@ If this does occur, you might want to consider using both **Nearest sampling and
 
 To summarize, it’s not the higher texture resolution itself that causes precision issues. Rather, for VATs and similar techniques, the problem arises because vertices need to be dead-centered on texels, and as texture resolution increases, the texels become smaller, making imprecision issues more apparent.
 
-### Fixing Normals
+### Compendium - Fixing Normals
 
 Offsetting vertices in a vertex shader does not update the normals, and for good reasons.
 
