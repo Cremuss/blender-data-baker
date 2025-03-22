@@ -268,7 +268,7 @@ In simple terms, the **mesh will be cut**, and these **vertices will be duplicat
 
 ![img](Documentation/Images/single_vert_attr_02.jpg)
 
-This can easily be proven. When exporting two cylinders to Unreal Engine, one with *no UV map* and the other with a UV map containing a *single seam*, the latter contains two extra vertices for the seam.
+This can easily be proven. When exporting two cylinders to *Unreal Engine*, one with *no UV map* and the other with a UV map containing a *single seam*, the latter contains two extra vertices for the seam.
 
 ![img](Documentation/Images/single_vert_attr_03.jpg)
 
@@ -276,7 +276,7 @@ This **principle applies to all vertex attributes**, such as *normals*. To creat
 
 ![img](Documentation/Images/single_vert_attr_04.jpg)
 
-Again, this can be easily demonstrated. When exporting two spheres to Unreal Engine, one with *smooth shading* and the other with *flat shading*, the latter contains a significantly higher number of vertices, simply because each face duplicates all its vertices so they can have unique normals.
+Again, this can be easily demonstrated. When exporting two spheres to *Unreal Engine*, one with *smooth shading* and the other with *flat shading*, the latter contains a significantly higher number of vertices, simply because each face duplicates all its vertices so they can have unique normals.
 
 ![img](Documentation/Images/single_vert_attr_05.jpg)
 
@@ -290,7 +290,7 @@ This results in an increased vertex count that can be predicted and confirmed in
 > This concept may cause confusion for new artists and tech artists, mainly because a DCC software tries its best to hide this process for a better user experience. However, this still happens under the hood in all DCC softwares, and it is certainly true for all game engines as well. When in doubt, if you’re using UVs or Vertex Colors to store arbitrary data or manipulating normals in an unusual way, just ask yourself if the data is per face or per vertex. Most of the time, it will be per vertex, with UV seams and hard edges being the most notable exception.
 
 > [!IMPORTANT]
-> This isn’t a concern for VAT, BAT, OAT, and Pivot Painter. The extra UV map they all create assigns a single UV coordinate per vertex, so no splits are induced and no vertices are duplicated. However, this may be a concern when baking arbitrary data in UVs, such as a random value per face, but this is a very rare use case. Most reasons for baking data in UVs, including storing pivots, axes, etc., all assign a single UV per vertex, so no splits are induced. The concept of a vertex being limited to storing a single attribute of a given type is fundamental to tech art and is included in the documentation for the sake of completeness.
+> This isn’t a concern for VAT, BAT, OAT, and Pivot Painter. The extra UV map they all create assigns a single UV coordinate per vertex, so no splits are induced and no vertices are duplicated. However, this may be a concern when baking arbitrary data in UVs, such as a random value per face, but this is a very rare use case. Most reasons for baking data in UVs, including storing pivots, axes, etc., all assign a single UV per vertex, so no splits are induced. The concept of a vertex being limited to storing a single attribute of a given type is fundamental to tech art and is included in this documentation for the sake of completeness.
 
 ## Compendium - UV map cost and count
 
