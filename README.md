@@ -652,9 +652,8 @@ The solution is to **store a 16-bit integer within the bits of a 16-bit float**.
 
 Sampling a 16-bit float *HDR* texture in *Unreal Engine* induces a 32-bit float conversion, scrambling the bits and making the asfloat() and asint() methods unusable. Therefore, a special algorithm must be used to 'split' the integer bits and distribute them across the sign, exponent, and mantissa components of the 16-bit float in a way that survives the 16-bit to 32-bit conversion.
 
+Here's the documented packing algorithm:
 
-<details>
-<summary>Here's the documented packing algorithm:</summary>
 ```
 /********/
 /* PACK */
@@ -792,4 +791,3 @@ Mant | 000000000XXXXXXXXXX0000000000000
 */
 16b_int_as_32b_float = 32b_float_sign | 32b_float_exp | 32b_float_mantissa
 ```
-</details>
