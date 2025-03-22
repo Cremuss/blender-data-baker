@@ -9,9 +9,9 @@ This addon packs several **professional-grade techniques** commonly used in the 
 - [Documentation](#documentation)
   - [VAT - Vertex Animation Textures Baker](#vat---vertex-animation-textures-baker)
     - [VAT - Theory](#vat---theory)
-    - [VAT - Packing, Interpolation, Padding & Resolution](#vat---packing-interpolation-padding-resolution)
-    - [VAT - Animation](#vat---animation)
-    - [VAT - Mesh Sequence](#vat---mesh-sequence)
+    - [VAT - Packing, Interpolation, Padding & Resolution](#vat---packing-interpolation-padding--resolution)
+    - [VAT - Documentation - Mesh Sequence](#vat---documentation---mesh-sequence)
+    - [VAT - Documentation - Animation](#vat---documentation---animation)
   - [OAT - Object Animation Textures Baker](#oat---object-animation-textures-baker)
     - [OAT - Theory](#oat---theory)
   - [BAT - Bone Animation Textures Baker](#bat---bone-animation-textures-baker)
@@ -173,6 +173,13 @@ This packing method simply stores one frame after the other and leaves no empty 
 ![img](Documentation/Images/)
 
 This requires a more complex algorithm to generate the UVs for sampling the VATs, and is considered experimental as it still needs thorough testing to ensure it doesn’t encounter precision issues with a high frame count. On paper, this **continuous** packing method promises to maximize the VAT's resolution and allows data to be tightly packed in POT textures, ensuring wide hardware support.
+
+### VAT - Documentation - Mesh Sequence
+
+
+
+### VAT - Documentation - Animation
+
 
 ## OAT - Object Animation Textures Baker
 
